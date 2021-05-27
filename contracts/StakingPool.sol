@@ -661,7 +661,7 @@ contract LPTokenWrapper {
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
 
-  IERC20 public uni_lp = IERC20(0xf0e5eb0B92F8427577469cC9B27eF67AeA19F115);
+  IERC20 public uni_lp;
 
   uint256 private _totalSupply;
 
@@ -693,8 +693,7 @@ interface IRewardDistributor {
 }
 
 contract StakingPool is LPTokenWrapper, RewardRecipient {
-  IERC20 public rewardToken =
-    IERC20(0x4A3e164684812DfB684AC36457E7fA805087c68E);
+  IERC20 public rewardToken;
 
   uint256 public rewardRate = 0;
   uint256 public lastUpdateTime;
@@ -707,6 +706,11 @@ contract StakingPool is LPTokenWrapper, RewardRecipient {
   event Staked(address indexed user, uint256 amount);
   event Withdrawn(address indexed user, uint256 amount);
   event RewardPaid(address indexed user, uint256 reward);
+
+  constructor(address _lp, address _rewardToken) public {
+    uni_lp = IERC20(_lp);
+    rewardToken = IERC20(_rewardToken);
+  }
 
   modifier updateReward(address account) {
     rewardPerTokenStored = rewardPerToken();
