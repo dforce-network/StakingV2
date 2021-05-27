@@ -32,7 +32,7 @@
     "ethereumjs-util": "^7.0.7",
     "ethereumjs-wallet": "^1.0.1",
     "ethers": "^5.0.21",
-    "hardhat": "^2.0.5",
+    "hardhat": "^2.3.0",
     "hardhat-contract-sizer": "^2.0.2",
     "hardhat-gas-reporter": "^1.0.3",
     "prettier": "^2.1.2",
