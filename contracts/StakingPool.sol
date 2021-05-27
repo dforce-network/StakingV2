@@ -707,9 +707,14 @@ contract StakingPool is LPTokenWrapper, RewardRecipient {
   event Withdrawn(address indexed user, uint256 amount);
   event RewardPaid(address indexed user, uint256 reward);
 
-  constructor(address _lp, address _rewardToken) public {
+  constructor(
+    address _lp,
+    address _rewardToken,
+    address _rewardDistributor
+  ) public {
     uni_lp = IERC20(_lp);
     rewardToken = IERC20(_rewardToken);
+    rewardDistributor = _rewardDistributor;
   }
 
   modifier updateReward(address account) {
