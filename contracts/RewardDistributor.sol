@@ -1,6 +1,7 @@
+//SPDX-License-Identifier: MIT
 // File: @openzeppelin/contracts/GSN/Context.sol
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
 /*
  * @dev Provides information about the current execution context, including the
@@ -31,7 +32,7 @@ contract Context {
 
 // File: @openzeppelin/contracts/ownership/Ownable.sol
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -112,7 +113,7 @@ contract Ownable is Context {
 
 // File: @openzeppelin/contracts/token/ERC20/IERC20.sol
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP. Does not include
@@ -198,7 +199,7 @@ interface IERC20 {
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
 interface IRewardRecipient {
   function setRewardRate(uint256 rewardRate) external;

@@ -1,10 +1,11 @@
+//SPDX-License-Identifier: MIT
 /*
    ____            __   __        __   _
   / __/__ __ ___  / /_ / /  ___  / /_ (_)__ __
  _\ \ / // // _ \/ __// _ \/ -_)/ __// / \ \ /
 /___/ \_, //_//_/\__//_//_/\__/ \__//_/ /_\_\
      /___/
-* Synthetix: YUANIncentives.sol
+* Synthetix: StakingPool.sol
 *
 * Docs: https://docs.synthetix.io/
 *
@@ -34,7 +35,7 @@
 
 // File: @openzeppelin/contracts/math/Math.sol
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
 /**
  * @dev Standard math utilities missing in the Solidity language.
@@ -66,7 +67,7 @@ library Math {
 
 // File: @openzeppelin/contracts/math/SafeMath.sol
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -237,7 +238,7 @@ library SafeMath {
 
 // File: @openzeppelin/contracts/GSN/Context.sol
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
 /*
  * @dev Provides information about the current execution context, including the
@@ -268,7 +269,7 @@ contract Context {
 
 // File: @openzeppelin/contracts/ownership/Ownable.sol
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -349,7 +350,7 @@ contract Ownable is Context {
 
 // File: @openzeppelin/contracts/token/ERC20/IERC20.sol
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP. Does not include
@@ -437,7 +438,7 @@ interface IERC20 {
 
 // File: @openzeppelin/contracts/utils/Address.sol
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
 /**
  * @dev Collection of functions related to the address type
@@ -505,7 +506,7 @@ library Address {
     require(address(this).balance >= amount, "Address: insufficient balance");
 
     // solhint-disable-next-line avoid-call-value
-    (bool success, ) = recipient.call.value(amount)("");
+    (bool success, ) = recipient.call{ value: amount }("");
     require(
       success,
       "Address: unable to send value, recipient may have reverted"
@@ -515,7 +516,7 @@ library Address {
 
 // File: @openzeppelin/contracts/token/ERC20/SafeERC20.sol
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
 /**
  * @title SafeERC20
@@ -634,12 +635,12 @@ library SafeERC20 {
 
 // File: contracts/RewardRecipient.sol
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
-contract RewardRecipient is Ownable {
+abstract contract RewardRecipient is Ownable {
   address public rewardDistributor;
 
-  function setRewardRate(uint256 rewardRate) external;
+  function setRewardRate(uint256 rewardRate) external virtual;
 
   modifier onlyRewardDistributor() {
     require(
@@ -654,7 +655,7 @@ contract RewardRecipient is Ownable {
   }
 }
 
-pragma solidity 0.5.15;
+pragma solidity 0.6.12;
 
 contract LPTokenWrapper {
   using SafeMath for uint256;
@@ -674,13 +675,13 @@ contract LPTokenWrapper {
     return _balances[account];
   }
 
-  function stake(uint256 amount) public {
+  function stake(uint256 amount) public virtual {
     _totalSupply = _totalSupply.add(amount);
     _balances[msg.sender] = _balances[msg.sender].add(amount);
     uni_lp.safeTransferFrom(msg.sender, address(this), amount);
   }
 
-  function withdraw(uint256 amount) public {
+  function withdraw(uint256 amount) public virtual {
     _totalSupply = _totalSupply.sub(amount);
     _balances[msg.sender] = _balances[msg.sender].sub(amount);
     uni_lp.safeTransfer(msg.sender, amount);
@@ -738,13 +739,13 @@ contract StakingPool is LPTokenWrapper, RewardRecipient {
   }
 
   // stake visibility is public as overriding LPTokenWrapper's stake() function
-  function stake(uint256 amount) public updateReward(msg.sender) {
+  function stake(uint256 amount) public override updateReward(msg.sender) {
     require(amount > 0, "Cannot stake 0");
     super.stake(amount);
     emit Staked(msg.sender, amount);
   }
 
-  function withdraw(uint256 amount) public updateReward(msg.sender) {
+  function withdraw(uint256 amount) public override updateReward(msg.sender) {
     require(amount > 0, "Cannot withdraw 0");
     super.withdraw(amount);
     emit Withdrawn(msg.sender, amount);
@@ -766,6 +767,7 @@ contract StakingPool is LPTokenWrapper, RewardRecipient {
 
   function setRewardRate(uint256 _rewardRate)
     external
+    override
     onlyRewardDistributor
     updateReward(address(0))
   {
