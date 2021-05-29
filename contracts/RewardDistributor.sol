@@ -67,4 +67,18 @@ contract RewardDistributor is Ownable {
     addRecipient(_recipient);
     setRecipientRewardRate(_recipient, _rewardRate);
   }
+
+  /**
+   * @param _lpToken The address of LP token to stake in the new staking pool.
+   * @param _rewardRate The reward amount to distribute per block.
+   */
+  function newStakingPoolAndSetRewardRate(address _lpToken, uint256 _rewardRate)
+    external
+    onlyOwner
+    returns (address _newStakingPool)
+  {
+    _newStakingPool = address(new StakingPool(_lpToken, address(rewardToken)));
+    addRecipient(_newStakingPool);
+    setRecipientRewardRate(_newStakingPool, _rewardRate);
+  }
 }

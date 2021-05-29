@@ -49,8 +49,25 @@ async function deployStakingPool(
 
   const pool = await (
     await ethers.getContractFactory("StakingPool")
-  ).deploy(lp.address, rewardToken.address, rewardDistributor.address);
+  ).deploy(lp.address, rewardToken.address);
   await pool.deployed();
+
+  return { lp, pool };
+}
+
+async function newStakingPool(index: number, rewardDistributor: Contract) {
+  const nameAndSymbol = "LP" + index;
+  const lp = await deployERC20(nameAndSymbol, nameAndSymbol);
+
+  const StakingPool = await ethers.getContractFactory("StakingPool");
+
+  const pool = StakingPool.attach(
+    await rewardDistributor.callStatic.newStakingPoolAndSetRewardRate(
+      lp.address,
+      0
+    )
+  );
+  await rewardDistributor.newStakingPoolAndSetRewardRate(lp.address, 0);
 
   return { lp, pool };
 }
@@ -62,7 +79,7 @@ async function deployStakingPools(
 ) {
   let lpsAndPools = await Promise.all(
     [...Array(poolNum).keys()].map(async (index) =>
-      deployStakingPool(index, rewardToken, rewardDistributor)
+      newStakingPool(index, rewardDistributor)
     )
   );
 
@@ -120,17 +137,19 @@ describe("Stakinng V2", function () {
   });
 
   describe("RewardDistributor", function () {
-    it("should be able to add recipients", async function () {
-      const rewardRate = utils.parseEther("10000");
-      for (const pool of pools) {
-        await rewardDistributor.addRecipientAndSetRewardRate(
-          pool.address,
-          rewardRate
-        );
+    // Staking pools are already added as recipients when newStakingPoolAndSetRewardRate is called
 
-        expect(await pool.rewardRate()).to.equal(rewardRate);
-      }
-    });
+    // it("should be able to add recipients", async function () {
+    //   const rewardRate = utils.parseEther("10000");
+    //   for (const pool of pools) {
+    //     await rewardDistributor.addRecipientAndSetRewardRate(
+    //       pool.address,
+    //       rewardRate
+    //     );
+
+    //     expect(await pool.rewardRate()).to.equal(rewardRate);
+    //   }
+    // });
 
     it("should be able to set recipients' reward rate", async function () {
       const rewardRate = utils.parseEther("10000");

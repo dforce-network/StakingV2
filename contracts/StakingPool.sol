@@ -11,7 +11,7 @@ interface IRewardDistributor {
   function transferReward(address to, uint256 value) external;
 }
 
-contract StakingPool is LPTokenWrapper, RewardRecipient {
+contract StakingPool is Ownable, LPTokenWrapper {
   IERC20 public rewardToken;
 
   uint256 public rewardRate = 0;
@@ -26,14 +26,9 @@ contract StakingPool is LPTokenWrapper, RewardRecipient {
   event Withdrawn(address indexed user, uint256 amount);
   event RewardPaid(address indexed user, uint256 reward);
 
-  constructor(
-    address _lp,
-    address _rewardToken,
-    address _rewardDistributor
-  ) public {
+  constructor(address _lp, address _rewardToken) public {
     uni_lp = IERC20(_lp);
     rewardToken = IERC20(_rewardToken);
-    rewardDistributor = _rewardDistributor;
   }
 
   modifier updateReward(address _account) {
@@ -95,8 +90,7 @@ contract StakingPool is LPTokenWrapper, RewardRecipient {
 
   function setRewardRate(uint256 _rewardRate)
     external
-    override
-    onlyRewardDistributor
+    onlyOwner
     updateReward(address(0))
   {
     uint256 _oldRewardRate = rewardRate;
