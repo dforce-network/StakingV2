@@ -22,13 +22,13 @@ contract RewardDistributor is Ownable {
     rewardToken = IERC20(_rewardToken);
   }
 
-  function setRecipientRewardRate(address recipient, uint256 rewardRate)
+  function setRecipientRewardRate(address _recipient, uint256 _rewardRate)
     public
     onlyOwner
   {
-    require(isRecipient[recipient], "recipient has not been added");
+    require(isRecipient[_recipient], "recipient has not been added");
 
-    IRewardRecipient(recipient).setRewardRate(rewardRate);
+    IRewardRecipient(_recipient).setRewardRate(_rewardRate);
   }
 
   function transferReward(address to, uint256 value) external {
@@ -37,10 +37,10 @@ contract RewardDistributor is Ownable {
     rewardToken.transfer(to, value);
   }
 
-  function addRecipient(address recipient) public onlyOwner {
-    if (!isRecipient[recipient]) {
-      isRecipient[recipient] = true;
-      emit RewardRecipientAdded(recipient);
+  function addRecipient(address _recipient) public onlyOwner {
+    if (!isRecipient[_recipient]) {
+      isRecipient[_recipient] = true;
+      emit RewardRecipientAdded(_recipient);
     }
   }
 
@@ -49,22 +49,22 @@ contract RewardDistributor is Ownable {
    * To stop the reward distribution of a specific recipient, just set the reward to 0.
    * Removing receipient means no reward can be claimed from it.
    */
-  function removeRecipient(address recipient) external onlyOwner {
-    if (isRecipient[recipient]) {
-      isRecipient[recipient] = false;
-      emit RewardRecipientRemoved(recipient);
+  function removeRecipient(address _recipient) external onlyOwner {
+    if (isRecipient[_recipient]) {
+      isRecipient[_recipient] = false;
+      emit RewardRecipientRemoved(_recipient);
     }
   }
 
   /**
-   * @param recipient The address of staking pool to distribute reward.
-   * @param rewardRate The reward amount to distribute per block.
+   * @param _recipient The address of staking pool to distribute reward.
+   * @param _rewardRate The reward amount to distribute per block.
    */
-  function addRecipientAndSetRewardRate(address recipient, uint256 rewardRate)
+  function addRecipientAndSetRewardRate(address _recipient, uint256 _rewardRate)
     external
     onlyOwner
   {
-    addRecipient(recipient);
-    setRecipientRewardRate(recipient, rewardRate);
+    addRecipient(_recipient);
+    setRecipientRewardRate(_recipient, _rewardRate);
   }
 }

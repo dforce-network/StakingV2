@@ -36,12 +36,12 @@ contract StakingPool is LPTokenWrapper, RewardRecipient {
     rewardDistributor = _rewardDistributor;
   }
 
-  modifier updateReward(address account) {
+  modifier updateReward(address _account) {
     rewardPerTokenStored = rewardPerToken();
     lastUpdateTime = block.timestamp;
-    if (account != address(0)) {
-      rewards[account] = earned(account);
-      userRewardPerTokenPaid[account] = rewardPerTokenStored;
+    if (_account != address(0)) {
+      rewards[_account] = earned(_account);
+      userRewardPerTokenPaid[_account] = rewardPerTokenStored;
     }
     _;
   }
@@ -58,25 +58,25 @@ contract StakingPool is LPTokenWrapper, RewardRecipient {
       );
   }
 
-  function earned(address account) public view returns (uint256) {
+  function earned(address _account) public view returns (uint256) {
     return
-      balanceOf(account)
-        .mul(rewardPerToken().sub(userRewardPerTokenPaid[account]))
+      balanceOf(_account)
+        .mul(rewardPerToken().sub(userRewardPerTokenPaid[_account]))
         .div(1e18)
-        .add(rewards[account]);
+        .add(rewards[_account]);
   }
 
   // stake visibility is public as overriding LPTokenWrapper's stake() function
-  function stake(uint256 amount) public override updateReward(msg.sender) {
-    require(amount > 0, "Cannot stake 0");
-    super.stake(amount);
-    emit Staked(msg.sender, amount);
+  function stake(uint256 _amount) public override updateReward(msg.sender) {
+    require(_amount > 0, "Cannot stake 0");
+    super.stake(_amount);
+    emit Staked(msg.sender, _amount);
   }
 
-  function withdraw(uint256 amount) public override updateReward(msg.sender) {
-    require(amount > 0, "Cannot withdraw 0");
-    super.withdraw(amount);
-    emit Withdrawn(msg.sender, amount);
+  function withdraw(uint256 _amount) public override updateReward(msg.sender) {
+    require(_amount > 0, "Cannot withdraw 0");
+    super.withdraw(_amount);
+    emit Withdrawn(msg.sender, _amount);
   }
 
   function exit() external {
@@ -85,11 +85,11 @@ contract StakingPool is LPTokenWrapper, RewardRecipient {
   }
 
   function getReward() public updateReward(msg.sender) {
-    uint256 reward = rewards[msg.sender];
-    if (reward > 0) {
+    uint256 _reward = rewards[msg.sender];
+    if (_reward > 0) {
       rewards[msg.sender] = 0;
-      IRewardDistributor(rewardDistributor).transferReward(msg.sender, reward);
-      emit RewardPaid(msg.sender, reward);
+      IRewardDistributor(owner()).transferReward(msg.sender, _reward);
+      emit RewardPaid(msg.sender, _reward);
     }
   }
 
@@ -112,17 +112,15 @@ contract StakingPool is LPTokenWrapper, RewardRecipient {
   // It also allows for removal of airdropped tokens.
   function rescueTokens(
     IERC20 _token,
-    uint256 amount,
-    address to
-  ) external {
-    // only gov
-    require(msg.sender == owner(), "!governance");
+    uint256 _amount,
+    address _to
+  ) external onlyOwner {
     // cant take staked asset
     require(_token != uni_lp, "uni_lp");
     // cant take reward asset
     require(_token != rewardToken, "rewardToken");
 
-    // transfer to
-    _token.transfer(to, amount);
+    // transfer _to
+    _token.transfer(_to, _amount);
   }
 }
