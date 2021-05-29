@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "./Ownable.sol";
 
 abstract contract RewardRecipient is Ownable {
   address public rewardDistributor;
@@ -10,7 +10,7 @@ abstract contract RewardRecipient is Ownable {
 
   modifier onlyRewardDistributor() {
     require(
-      _msgSender() == rewardDistributor,
+      msg.sender == rewardDistributor,
       "Caller is not reward distribution"
     );
     _;

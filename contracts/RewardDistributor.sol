@@ -2,7 +2,7 @@
 pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "./Ownable.sol";
 
 import "./StakingPool.sol";
 
@@ -19,6 +19,7 @@ contract RewardDistributor is Ownable {
   event RewardRecipientRemoved(address recipient);
 
   constructor(address _rewardToken) public {
+    __Ownable_init();
     rewardToken = IERC20(_rewardToken);
   }
 

@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "./Ownable.sol";
 import "./LPTokenWrapper.sol";
 import "./RewardRecipient.sol";
 
@@ -27,6 +27,7 @@ contract StakingPool is Ownable, LPTokenWrapper {
   event RewardPaid(address indexed user, uint256 reward);
 
   constructor(address _lp, address _rewardToken) public {
+    __Ownable_init();
     uni_lp = IERC20(_lp);
     rewardToken = IERC20(_rewardToken);
   }
@@ -83,7 +84,7 @@ contract StakingPool is Ownable, LPTokenWrapper {
     uint256 _reward = rewards[msg.sender];
     if (_reward > 0) {
       rewards[msg.sender] = 0;
-      IRewardDistributor(owner()).transferReward(msg.sender, _reward);
+      IRewardDistributor(owner).transferReward(msg.sender, _reward);
       emit RewardPaid(msg.sender, _reward);
     }
   }
