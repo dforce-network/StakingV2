@@ -3,9 +3,9 @@ pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "./Ownable.sol";
-
 import "./StakingPool.sol";
 
 interface IRewardRecipient {
@@ -14,10 +14,11 @@ interface IRewardRecipient {
 
 contract RewardDistributor is Ownable {
   using SafeERC20 for IERC20;
+  using EnumerableSet for EnumerableSet.AddressSet;
 
   IERC20 public rewardToken;
 
-  mapping(address => bool) public isRecipient;
+  EnumerableSet.AddressSet internal recipients;
 
   event RewardRecipientAdded(address recipient);
   event RewardRecipientRemoved(address recipient);
@@ -31,14 +32,13 @@ contract RewardDistributor is Ownable {
     public
     onlyOwner
   {
-    require(isRecipient[_recipient], "recipient has not been added");
+    require(recipients.contains(_recipient), "recipient has not been added");
 
     IRewardRecipient(_recipient).setRewardRate(_rewardRate);
   }
 
   function addRecipient(address _recipient) public onlyOwner {
-    if (!isRecipient[_recipient]) {
-      isRecipient[_recipient] = true;
+    if (recipients.add(_recipient)) {
       rewardToken.safeApprove(_recipient, uint256(-1));
       emit RewardRecipientAdded(_recipient);
     }
@@ -50,8 +50,7 @@ contract RewardDistributor is Ownable {
    * Removing receipient means no reward can be claimed from it.
    */
   function removeRecipient(address _recipient) external onlyOwner {
-    if (isRecipient[_recipient]) {
-      isRecipient[_recipient] = false;
+    if (recipients.remove(_recipient)) {
       rewardToken.safeApprove(_recipient, 0);
       emit RewardRecipientRemoved(_recipient);
     }
@@ -81,5 +80,23 @@ contract RewardDistributor is Ownable {
     _newStakingPool = address(new StakingPool(_lpToken, address(rewardToken)));
     addRecipient(_newStakingPool);
     setRecipientRewardRate(_newStakingPool, _rewardRate);
+  }
+
+  /**
+   * @notice Return all of the Staking Pool recipients
+   * @return _allRecipients The list of Staking Pool recipients addresses
+   */
+  function getAllRecipients()
+    public
+    view
+    returns (address[] memory _allRecipients)
+  {
+    EnumerableSet.AddressSet storage _recipients = recipients;
+
+    uint256 _len = _recipients.length();
+    _allRecipients = new address[](_len);
+    for (uint256 i = 0; i < _len; i++) {
+      _allRecipients[i] = _recipients.at(i);
+    }
   }
 }

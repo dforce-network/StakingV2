@@ -61,13 +61,15 @@ async function newStakingPool(index: number, rewardDistributor: Contract) {
 
   const StakingPool = await ethers.getContractFactory("StakingPool");
 
-  const pool = StakingPool.attach(
-    await rewardDistributor.callStatic.newStakingPoolAndSetRewardRate(
-      lp.address,
-      0
-    )
+  const tx = await rewardDistributor.newStakingPoolAndSetRewardRate(
+    lp.address,
+    0
   );
-  await rewardDistributor.newStakingPoolAndSetRewardRate(lp.address, 0);
+
+  const receipt = await tx.wait();
+  // const event = receipt.events[2];
+
+  const pool = StakingPool.attach(receipt.events[2].args.recipient);
 
   return { lp, pool };
 }
@@ -180,6 +182,20 @@ describe("Stakinng V2", function () {
       ).to.be.revertedWith("recipient has not been added");
 
       expect(await pool.rewardRate()).to.equal(0);
+    });
+
+    it("should be able to get all recipients", async function () {
+      // To use [...] to shallow copy the addresses and then sort
+      // calling sort on the addresses seems change the orders of the original pool contract
+      const poolAddresses = [...pools.map((v) => v.address)].sort();
+      let allRecipients = [
+        ...(await rewardDistributor.getAllRecipients()),
+      ].sort();
+
+      // console.log(poolAddresses);
+      // console.log(allRecipients);
+
+      expect(allRecipients).to.eql(poolAddresses);
     });
   });
 
