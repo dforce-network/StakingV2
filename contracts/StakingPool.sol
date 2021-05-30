@@ -2,15 +2,14 @@
 pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "./Ownable.sol";
 import "./LPTokenWrapper.sol";
 
-interface IRewardDistributor {
-  function transferReward(address to, uint256 value) external;
-}
-
 contract StakingPool is Ownable, LPTokenWrapper {
+  using SafeERC20 for IERC20;
+
   IERC20 public rewardToken;
 
   uint256 public rewardRate = 0;
@@ -83,7 +82,7 @@ contract StakingPool is Ownable, LPTokenWrapper {
     uint256 _reward = rewards[msg.sender];
     if (_reward > 0) {
       rewards[msg.sender] = 0;
-      IRewardDistributor(owner).transferReward(msg.sender, _reward);
+      rewardToken.safeTransferFrom(owner, msg.sender, _reward);
       emit RewardPaid(msg.sender, _reward);
     }
   }

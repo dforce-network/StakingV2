@@ -2,6 +2,8 @@
 pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+
 import "./Ownable.sol";
 
 import "./StakingPool.sol";
@@ -11,6 +13,8 @@ interface IRewardRecipient {
 }
 
 contract RewardDistributor is Ownable {
+  using SafeERC20 for IERC20;
+
   IERC20 public rewardToken;
 
   mapping(address => bool) public isRecipient;
@@ -32,15 +36,10 @@ contract RewardDistributor is Ownable {
     IRewardRecipient(_recipient).setRewardRate(_rewardRate);
   }
 
-  function transferReward(address to, uint256 value) external {
-    require(isRecipient[msg.sender], "recipient has not been added");
-
-    rewardToken.transfer(to, value);
-  }
-
   function addRecipient(address _recipient) public onlyOwner {
     if (!isRecipient[_recipient]) {
       isRecipient[_recipient] = true;
+      rewardToken.safeApprove(_recipient, uint256(-1));
       emit RewardRecipientAdded(_recipient);
     }
   }
@@ -53,6 +52,7 @@ contract RewardDistributor is Ownable {
   function removeRecipient(address _recipient) external onlyOwner {
     if (isRecipient[_recipient]) {
       isRecipient[_recipient] = false;
+      rewardToken.safeApprove(_recipient, 0);
       emit RewardRecipientRemoved(_recipient);
     }
   }

@@ -116,6 +116,8 @@ describe("Stakinng V2", function () {
   let lps: Contract[];
   let pools: Contract[];
 
+  const rewardRate = utils.parseEther("10000");
+
   before(async function () {
     // Only 5 accounts will stake
     accounts = (await ethers.getSigners()).slice(0, 4);
@@ -133,7 +135,10 @@ describe("Stakinng V2", function () {
     await distributeLPTokens(lps, addresses);
 
     // Initial transfer of rewardToken
-    await rewardToken.mint(rewardToken.address, utils.parseEther("100000000"));
+    await rewardToken.mint(
+      rewardDistributor.address,
+      utils.parseEther("100000000")
+    );
   });
 
   describe("RewardDistributor", function () {
@@ -152,7 +157,6 @@ describe("Stakinng V2", function () {
     // });
 
     it("should be able to set recipients' reward rate", async function () {
-      const rewardRate = utils.parseEther("10000");
       for (const pool of pools) {
         await rewardDistributor.setRecipientRewardRate(
           pool.address,
@@ -164,8 +168,6 @@ describe("Stakinng V2", function () {
     });
 
     it("should fail to set non-recipient's reward rate", async function () {
-      const rewardRate = utils.parseEther("10000");
-
       // Deploy a new pool has not been added
       const { lp, pool } = await deployStakingPool(
         100,
@@ -247,10 +249,10 @@ describe("Stakinng V2", function () {
       const totalReward = rewardRate.mul(timeElapsed);
 
       const earned = await Promise.all(
-        accounts.map(
-          async (account) => await pool.earned(await account.getAddress())
-        )
+        addresses.map(async (address) => await pool.earned(address))
       );
+
+      // console.log(earned.map((v) => v.toString()));
 
       expect(earned.reduce((a, v) => a.add(v))).to.equal(totalReward);
     });
@@ -270,6 +272,53 @@ describe("Stakinng V2", function () {
       await miningBlock();
 
       const receipts = await Promise.all(txs.map((tx) => tx.wait()));
+    });
+
+    it("should be able to get reward", async function () {
+      const { lp, pool } = lpsAndPools[0];
+      const amount = utils.parseEther("10");
+
+      await increaseTime(3600);
+      await miningBlock();
+
+      let earned = await Promise.all(
+        addresses.map(async (address) => {
+          return pool.earned(address);
+        })
+      );
+
+      const rewardBalancesBefore = await Promise.all(
+        addresses.map(async (address) => {
+          return rewardToken.balanceOf(address);
+        })
+      );
+
+      // Increase timestamp of 1s
+      await increaseTime(1);
+      earned = earned.map((v) => v.add(rewardRate.div(accounts.length)));
+
+      const txs = await Promise.all(
+        accounts.map(async (account) => {
+          return pool.connect(account).getReward();
+        })
+      );
+      await miningBlock();
+      await Promise.all(txs.map((tx) => tx.wait()));
+
+      const rewardBalancesAfter = await Promise.all(
+        addresses.map(async (address) => {
+          return rewardToken.balanceOf(address);
+        })
+      );
+
+      const rewards = rewardBalancesAfter.map((v, i) =>
+        v.sub(rewardBalancesBefore[i])
+      );
+
+      // console.log(earned.map((v) => v.toString()));
+      // console.log(rewards.map((v) => v.toString()));
+
+      expect(rewards).to.deep.equal(earned);
     });
   });
 });
