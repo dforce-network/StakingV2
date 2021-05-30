@@ -25,11 +25,10 @@ contract RewardDistributor is Initializable, Ownable {
   event RewardRecipientRemoved(address recipient);
 
   constructor(address _rewardToken) public {
-    __Ownable_init();
-    rewardToken = IERC20Upgradeable(_rewardToken);
+    initialize(_rewardToken);
   }
 
-  function initialize(address _rewardToken) external initializer {
+  function initialize(address _rewardToken) public initializer {
     __Ownable_init();
     rewardToken = IERC20Upgradeable(_rewardToken);
   }
