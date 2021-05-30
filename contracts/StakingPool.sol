@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./Ownable.sol";
 import "./LPTokenWrapper.sol";
-import "./RewardRecipient.sol";
 
 interface IRewardDistributor {
   function transferReward(address to, uint256 value) external;
