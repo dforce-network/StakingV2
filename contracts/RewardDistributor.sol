@@ -1,9 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/EnumerableSetUpgradeable.sol";
 
 import "./Ownable.sol";
 import "./StakingPool.sol";
@@ -12,20 +13,25 @@ interface IRewardRecipient {
   function setRewardRate(uint256 rewardRate) external;
 }
 
-contract RewardDistributor is Ownable {
-  using SafeERC20 for IERC20;
-  using EnumerableSet for EnumerableSet.AddressSet;
+contract RewardDistributor is Initializable, Ownable {
+  using SafeERC20Upgradeable for IERC20Upgradeable;
+  using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
-  IERC20 public rewardToken;
+  IERC20Upgradeable public rewardToken;
 
-  EnumerableSet.AddressSet internal recipients;
+  EnumerableSetUpgradeable.AddressSet internal recipients;
 
   event RewardRecipientAdded(address recipient);
   event RewardRecipientRemoved(address recipient);
 
   constructor(address _rewardToken) public {
     __Ownable_init();
-    rewardToken = IERC20(_rewardToken);
+    rewardToken = IERC20Upgradeable(_rewardToken);
+  }
+
+  function initialize(address _rewardToken) external initializer {
+    __Ownable_init();
+    rewardToken = IERC20Upgradeable(_rewardToken);
   }
 
   function setRecipientRewardRate(address _recipient, uint256 _rewardRate)
@@ -91,7 +97,7 @@ contract RewardDistributor is Ownable {
     view
     returns (address[] memory _allRecipients)
   {
-    EnumerableSet.AddressSet storage _recipients = recipients;
+    EnumerableSetUpgradeable.AddressSet storage _recipients = recipients;
 
     uint256 _len = _recipients.length();
     _allRecipients = new address[](_len);
