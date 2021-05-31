@@ -3,109 +3,24 @@ import { Signer, Contract, BigNumber, utils } from "ethers";
 import { expect } from "chai";
 const { createFixtureLoader, provider } = waffle;
 
+const {
+  miningBlock,
+  increaseTime,
+  getCurrentTimestamp,
+  deployERC20,
+  deployRewardDistributor,
+  deployStakingPool,
+  deployStakingPools,
+} = require("./utils");
+
 // Use ethers provider instead of waffle's default MockProvider
 const loadFixture = createFixtureLoader([], provider);
-
-async function miningBlock() {
-  await network.provider.send("evm_mine");
-}
-
-async function increaseTime(time: number) {
-  await network.provider.request({
-    method: "evm_increaseTime",
-    params: [time],
-  });
-  await miningBlock();
-}
-
-async function getCurrentTimestamp() {
-  const blockNumber = await provider.getBlockNumber();
-  const block = await provider.getBlock(blockNumber);
-
-  return block.timestamp;
-}
-
-async function deployERC20(
-  name: string,
-  symbol: string,
-  decimals: number = 18
-): Promise<Contract> {
-  const token = await (
-    await ethers.getContractFactory("Token")
-  ).deploy(name, symbol, decimals);
-
-  await token.deployed();
-
-  return token;
-}
-
-async function deployRewardDistributor(
-  rewardToken: Contract
-): Promise<Contract> {
-  const rewardDistributor = await (
-    await ethers.getContractFactory("RewardDistributor")
-  ).deploy(rewardToken.address);
-
-  await rewardDistributor.deployed();
-
-  return rewardDistributor;
-}
 
 async function fixtureRewardDistributor() {
   const rewardToken = await deployERC20("DF", "DF");
   const rewardDistributor = await deployRewardDistributor(rewardToken);
 
   return { rewardToken, rewardDistributor };
-}
-
-async function deployStakingPool(
-  index: number,
-  rewardToken: Contract,
-  rewardDistributor: Contract
-) {
-  const nameAndSymbol = "LP" + index;
-  const lp = await deployERC20(nameAndSymbol, nameAndSymbol);
-
-  const pool = await (
-    await ethers.getContractFactory("StakingPool")
-  ).deploy(lp.address, rewardToken.address, await getCurrentTimestamp());
-  await pool.deployed();
-
-  return { lp, pool };
-}
-
-async function newStakingPool(index: number, rewardDistributor: Contract) {
-  const nameAndSymbol = "LP" + index;
-  const lp = await deployERC20(nameAndSymbol, nameAndSymbol);
-
-  const StakingPool = await ethers.getContractFactory("StakingPool");
-
-  const tx = await rewardDistributor.newStakingPoolAndSetRewardRate(
-    lp.address,
-    0,
-    (await getCurrentTimestamp()) + 3600
-  );
-
-  const receipt = await tx.wait();
-  // const event = receipt.events[2];
-
-  const pool = StakingPool.attach(receipt.events[2].args.recipient);
-
-  return { lp, pool };
-}
-
-async function deployStakingPools(
-  rewardToken: Contract,
-  rewardDistributor: Contract,
-  poolNum: number = 3
-) {
-  let lpsAndPools = await Promise.all(
-    [...Array(poolNum).keys()].map(async (index) =>
-      newStakingPool(index, rewardDistributor)
-    )
-  );
-
-  return lpsAndPools;
 }
 
 async function fixtureDefault() {
