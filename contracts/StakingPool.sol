@@ -53,6 +53,7 @@ contract StakingPool is Ownable, LPTokenWrapper {
 
   modifier updateRewardDistributed() {
     rewardDistributedStored = rewardDistributed();
+    lastRateUpdateTime = block.timestamp;
     _;
   }
 
@@ -128,7 +129,6 @@ contract StakingPool is Ownable, LPTokenWrapper {
   {
     uint256 _oldRewardRate = rewardRate;
     rewardRate = _rewardRate;
-    lastRateUpdateTime = block.timestamp;
 
     emit RewardRateUpdated(_oldRewardRate, _rewardRate);
   }

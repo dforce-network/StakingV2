@@ -445,9 +445,26 @@ describe("Stakinng V2", function () {
         await increaseTime(60);
         await miningBlock();
 
-        const rewardDistributed = rewardRate.mul(
-          (await getCurrentTimestamp()) - startTime
+        const newRewardRate = rewardRate.mul(2);
+        await rewardDistributor.setRecipientRewardRate(
+          pool.address,
+          newRewardRate
         );
+        await miningBlock();
+        const time1 = await getCurrentTimestamp();
+        let rewardDistributed = rewardRate.mul(time1 - startTime);
+
+        expect(await pool.rewardDistributed()).to.equal(rewardDistributed);
+
+        await increaseTime(100);
+        await miningBlock();
+        const time2 = await getCurrentTimestamp();
+
+        rewardDistributed = rewardDistributed.add(
+          newRewardRate.mul(time2 - time1)
+        );
+
+        expect(await pool.rewardDistributed()).to.equal(rewardDistributed);
 
         // const rewardRemaining = await rewardToken.balanceOf(
         //   rewardDistributor.address
@@ -458,8 +475,6 @@ describe("Stakinng V2", function () {
         // console.log(utils.formatEther(rewardDistributed));
         // console.log(utils.formatEther(rewardClaimed));
         // console.log(utils.formatEther(rewardRemaining));
-
-        expect(await pool.rewardDistributed()).to.equal(rewardDistributed);
       });
     });
   });
