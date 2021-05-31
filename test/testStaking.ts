@@ -15,6 +15,7 @@ async function increaseTime(time: number) {
     method: "evm_increaseTime",
     params: [time],
   });
+  await miningBlock();
 }
 
 async function getCurrentTimestamp() {
@@ -263,7 +264,6 @@ describe("Stakinng V2", function () {
         const { lp, pool } = lpsAndPools[0];
 
         await increaseTime(1000);
-        await miningBlock();
 
         const currentTime = await getCurrentTimestamp();
         expect(currentTime).lt(startTime);
@@ -282,7 +282,6 @@ describe("Stakinng V2", function () {
         const { lp, pool } = lpsAndPools[0];
 
         await increaseTime(1000);
-        await miningBlock();
 
         const currentTime = await getCurrentTimestamp();
         expect(currentTime).lt(startTime);
@@ -349,7 +348,6 @@ describe("Stakinng V2", function () {
         const { lp, pool } = lpsAndPools[0];
 
         await increaseTime(3600);
-        await miningBlock();
 
         const currentTime = await getCurrentTimestamp();
         startTime = await pool.startTime();
@@ -395,7 +393,6 @@ describe("Stakinng V2", function () {
         const amount = utils.parseEther("10");
 
         await increaseTime(3600);
-        await miningBlock();
 
         let earned = await Promise.all(
           addresses.map(async (address) => {
@@ -409,9 +406,7 @@ describe("Stakinng V2", function () {
           })
         );
 
-        // Increase timestamp of 1s
-        await increaseTime(1);
-        earned = earned.map((v) => v.add(rewardRate.div(accounts.length)));
+        const time1 = await getCurrentTimestamp();
 
         const txs = await Promise.all(
           accounts.map(async (account) => {
@@ -431,6 +426,11 @@ describe("Stakinng V2", function () {
           v.sub(rewardBalancesBefore[i])
         );
 
+        const time2 = await getCurrentTimestamp();
+        earned = earned.map((v) =>
+          v.add(rewardRate.mul(time2 - time1).div(accounts.length))
+        );
+
         // console.log(earned.map((v) => v.toString()));
         // console.log(rewards.map((v) => v.toString()));
 
@@ -443,7 +443,6 @@ describe("Stakinng V2", function () {
         const { lp, pool } = lpsAndPools[0];
 
         await increaseTime(60);
-        await miningBlock();
 
         const newRewardRate = rewardRate.mul(2);
         await rewardDistributor.setRecipientRewardRate(
@@ -457,7 +456,6 @@ describe("Stakinng V2", function () {
         expect(await pool.rewardDistributed()).to.equal(rewardDistributed);
 
         await increaseTime(100);
-        await miningBlock();
         const time2 = await getCurrentTimestamp();
 
         rewardDistributed = rewardDistributed.add(
