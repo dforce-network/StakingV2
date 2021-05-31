@@ -35,14 +35,14 @@ export default {
       allowUnlimitedContractSize: true,
     },
     mainnet: {
-      url: `https://mainnet.infura.io/v3/${infuraKey}`,
+      url: `https://eth-mainnet.alchemyapi.io/${alchemyKey}`,
       accounts: [`0x${privateKey}`],
       gas: 8000000,
       gasPrice: 1000000000, // 1gWei
       timeout: 200000,
     },
     kovan: {
-      url: `https://kovan.infura.io/v3/${infuraKey}`,
+      url: `https://eth-kovan.alchemyapi.io/v2/${alchemyKey}`,
       accounts: [`0x${privateKey}`],
       gas: 8000000,
       gasPrice: 1000000000, // 1gWei

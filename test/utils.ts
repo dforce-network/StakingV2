@@ -50,20 +50,25 @@ async function deployRewardDistributor(
 async function deployStakingPool(
   index: number,
   rewardToken: Contract,
-  rewardDistributor: Contract
+  rewardDistributor: Contract,
+  startTime: number
 ) {
   const nameAndSymbol = "LP" + index;
   const lp = await deployERC20(nameAndSymbol, nameAndSymbol);
 
   const pool = await (
     await ethers.getContractFactory("StakingPool")
-  ).deploy(lp.address, rewardToken.address, await getCurrentTimestamp());
+  ).deploy(lp.address, rewardToken.address, startTime);
   await pool.deployed();
 
   return { lp, pool };
 }
 
-async function newStakingPool(index: number, rewardDistributor: Contract) {
+async function newStakingPool(
+  index: number,
+  rewardDistributor: Contract,
+  startTime: number
+) {
   const nameAndSymbol = "LP" + index;
   const lp = await deployERC20(nameAndSymbol, nameAndSymbol);
 
@@ -72,7 +77,7 @@ async function newStakingPool(index: number, rewardDistributor: Contract) {
   const tx = await rewardDistributor.newStakingPoolAndSetRewardRate(
     lp.address,
     0,
-    (await getCurrentTimestamp()) + 3600
+    startTime
   );
 
   const receipt = await tx.wait();
@@ -86,11 +91,12 @@ async function newStakingPool(index: number, rewardDistributor: Contract) {
 async function deployStakingPools(
   rewardToken: Contract,
   rewardDistributor: Contract,
+  startTime: number,
   poolNum: number = 3
 ) {
   let lpsAndPools = await Promise.all(
     [...Array(poolNum).keys()].map(async (index) =>
-      newStakingPool(index, rewardDistributor)
+      newStakingPool(index, rewardDistributor, startTime)
     )
   );
 

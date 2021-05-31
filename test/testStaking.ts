@@ -28,7 +28,11 @@ async function fixtureDefault() {
     fixtureRewardDistributor
   );
 
-  const lpsAndPools = await deployStakingPools(rewardToken, rewardDistributor);
+  const lpsAndPools = await deployStakingPools(
+    rewardToken,
+    rewardDistributor,
+    (await getCurrentTimestamp()) + 3600
+  );
 
   return { rewardToken, rewardDistributor, lpsAndPools };
 }
@@ -108,7 +112,8 @@ describe("Stakinng V2", function () {
       const { lp, pool } = await deployStakingPool(
         100,
         rewardToken,
-        rewardDistributor
+        rewardDistributor,
+        (await getCurrentTimestamp()) + 3600
       );
 
       await expect(
