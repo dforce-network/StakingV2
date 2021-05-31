@@ -19,6 +19,9 @@ contract StakingPool is Ownable, LPTokenWrapper {
   uint256 public lastUpdateTime;
   uint256 public rewardPerTokenStored;
 
+  uint256 public lastRateUpdateTime;
+  uint256 public rewardDistributedStored;
+
   mapping(address => uint256) public userRewardPerTokenPaid;
   mapping(address => uint256) public rewards;
 
@@ -48,17 +51,36 @@ contract StakingPool is Ownable, LPTokenWrapper {
     _;
   }
 
-  function rewardPerToken() public view returns (uint256) {
-    uint256 lastTimeApplicable = Math.max(startTime, lastUpdateTime);
+  modifier updateRewardDistributed() {
+    rewardDistributedStored = rewardDistributed();
+    _;
+  }
 
-    if (totalSupply() == 0 || block.timestamp < lastTimeApplicable) {
+  function rewardPerToken() public view returns (uint256) {
+    uint256 _lastTimeApplicable = Math.max(startTime, lastUpdateTime);
+
+    if (totalSupply() == 0 || block.timestamp < _lastTimeApplicable) {
       return rewardPerTokenStored;
     }
 
     return
       rewardPerTokenStored.add(
-        block.timestamp.sub(lastTimeApplicable).mul(rewardRate).mul(1e18).div(
+        block.timestamp.sub(_lastTimeApplicable).mul(rewardRate).mul(1e18).div(
           totalSupply()
+        )
+      );
+  }
+
+  function rewardDistributed() public view returns (uint256) {
+    // Have not started yet
+    if (block.timestamp < startTime) {
+      return rewardDistributedStored;
+    }
+
+    return
+      rewardDistributedStored.add(
+        block.timestamp.sub(Math.max(startTime, lastRateUpdateTime)).mul(
+          rewardRate
         )
       );
   }
@@ -101,11 +123,13 @@ contract StakingPool is Ownable, LPTokenWrapper {
   function setRewardRate(uint256 _rewardRate)
     external
     onlyOwner
+    updateRewardDistributed
     updateReward(address(0))
   {
     uint256 _oldRewardRate = rewardRate;
     rewardRate = _rewardRate;
-    lastUpdateTime = block.timestamp;
+    lastRateUpdateTime = block.timestamp;
+
     emit RewardRateUpdated(_oldRewardRate, _rewardRate);
   }
 
