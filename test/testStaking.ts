@@ -240,125 +240,194 @@ describe("Stakinng V2", function () {
       await network.provider.send("evm_setAutomine", [true]);
     });
 
-    it("should be able to stake before start time", async function () {
-      const { lp, pool } = lpsAndPools[0];
-      let amount = utils.parseEther("10");
+    describe("Before start time", function () {
+      it("should be able to stake", async function () {
+        const { lp, pool } = lpsAndPools[0];
+        let amount = utils.parseEther("10");
 
-      const txs = await Promise.all(
-        accounts.map((account) => pool.connect(account).stake(amount))
-      );
+        const txs = await Promise.all(
+          accounts.map((account) => pool.connect(account).stake(amount))
+        );
 
-      await miningBlock();
+        await miningBlock();
 
-      const receipts = await Promise.all(txs.map((tx) => tx.wait()));
+        const receipts = await Promise.all(txs.map((tx) => tx.wait()));
 
-      // Assuming all txs are in the same block
-      stakeTime = await getCurrentTimestamp();
-      startTime = await pool.startTime();
+        // Assuming all txs are in the same block
+        stakeTime = await getCurrentTimestamp();
+        startTime = await pool.startTime();
 
-      expect(stakeTime).lt(startTime);
+        expect(stakeTime).lt(startTime);
+      });
+
+      it("accounts earned should all be 0", async function () {
+        const { lp, pool } = lpsAndPools[0];
+
+        await increaseTime(1000);
+        await miningBlock();
+
+        const currentTime = await getCurrentTimestamp();
+        expect(currentTime).lt(startTime);
+
+        const earned = await Promise.all(
+          addresses.map(async (address) => await pool.earned(address))
+        );
+
+        // console.log(earned.map((v) => v.toString()));
+
+        // total reward of all accounts should be 0
+        expect(earned.reduce((a, v) => a.add(v))).to.equal(0);
+      });
+
+      it("should be able to withdraw and exit", async function () {
+        const { lp, pool } = lpsAndPools[0];
+
+        await increaseTime(1000);
+        await miningBlock();
+
+        const currentTime = await getCurrentTimestamp();
+        expect(currentTime).lt(startTime);
+
+        // Withdraw
+        let txs = await Promise.all(
+          accounts.map(async (account) => {
+            const address = await account.getAddress();
+            let balance = await pool.balanceOf(address);
+            let amount = balance.div(2);
+            return pool.connect(account).withdraw(amount);
+          })
+        );
+        await miningBlock();
+        await Promise.all(txs.map((tx) => tx.wait()));
+
+        // Exit
+        txs = await Promise.all(
+          accounts.map(async (account) => {
+            const address = await account.getAddress();
+            let balance = await pool.balanceOf(address);
+            let amount = balance.div(2);
+            return pool.connect(account).exit();
+          })
+        );
+        await miningBlock();
+        await Promise.all(txs.map((tx) => tx.wait()));
+
+        // Total rewards should be 0
+        const rewardBalances = await Promise.all(
+          addresses.map(async (address) => {
+            return rewardToken.balanceOf(address);
+          })
+        );
+        expect(rewardBalances.reduce((a, v) => a.add(v))).to.equal(0);
+      });
+
+      it("should be able to stake again", async function () {
+        const { lp, pool } = lpsAndPools[0];
+        let amount = utils.parseEther("10");
+
+        const txs = await Promise.all(
+          accounts.map((account) => pool.connect(account).stake(amount))
+        );
+
+        await miningBlock();
+
+        const receipts = await Promise.all(txs.map((tx) => tx.wait()));
+
+        // Assuming all txs are in the same block
+        stakeTime = await getCurrentTimestamp();
+        startTime = await pool.startTime();
+
+        expect(stakeTime).lt(startTime);
+      });
     });
 
-    it("check accounts earned before start time should all be 0", async function () {
-      const { lp, pool } = lpsAndPools[0];
+    describe("After start time", function () {
+      it("check accounts earned after start time", async function () {
+        const { lp, pool } = lpsAndPools[0];
 
-      await increaseTime(1000);
-      await miningBlock();
+        await increaseTime(3600);
+        await miningBlock();
 
-      const currentTime = await getCurrentTimestamp();
-      expect(currentTime).lt(startTime);
+        const currentTime = await getCurrentTimestamp();
+        startTime = await pool.startTime();
+        expect(currentTime).gt(startTime);
 
-      const earned = await Promise.all(
-        addresses.map(async (address) => await pool.earned(address))
-      );
+        const rewardRate = await pool.rewardRate();
+        const timeStaked = currentTime - startTime;
+        const totalReward = rewardRate.mul(timeStaked);
 
-      // console.log(earned.map((v) => v.toString()));
+        const earned = await Promise.all(
+          addresses.map(async (address) => await pool.earned(address))
+        );
 
-      // total reward of all accounts should be 0
-      expect(earned.reduce((a, v) => a.add(v))).to.equal(0);
-    });
+        // console.log(earned.map((v) => v.toString()));
 
-    it("check accounts earned after start time", async function () {
-      const { lp, pool } = lpsAndPools[0];
+        expect(earned.reduce((a, v) => a.add(v))).to.equal(totalReward);
+      });
 
-      await increaseTime(3600);
-      await miningBlock();
+      it("should be able to withdraw", async function () {
+        const { lp, pool } = lpsAndPools[0];
 
-      const rewardRate = await pool.rewardRate();
-      const timeStaked = (await getCurrentTimestamp()) - startTime;
-      const totalReward = rewardRate.mul(timeStaked);
+        const txs = await Promise.all(
+          accounts.map(async (account) => {
+            const address = await account.getAddress();
+            let balance = await pool.balanceOf(address);
+            let amount = balance.div(2);
+            return pool.connect(account).withdraw(amount);
+          })
+        );
 
-      const earned = await Promise.all(
-        addresses.map(async (address) => await pool.earned(address))
-      );
+        await miningBlock();
 
-      // console.log(earned.map((v) => v.toString()));
+        const receipts = await Promise.all(txs.map((tx) => tx.wait()));
+      });
 
-      expect(earned.reduce((a, v) => a.add(v))).to.equal(totalReward);
-    });
+      it("should be able to get reward", async function () {
+        const { lp, pool } = lpsAndPools[0];
+        const amount = utils.parseEther("10");
 
-    it("should be able to withdraw", async function () {
-      const { lp, pool } = lpsAndPools[0];
+        await increaseTime(3600);
+        await miningBlock();
 
-      const txs = await Promise.all(
-        accounts.map(async (account) => {
-          const address = await account.getAddress();
-          let balance = await pool.balanceOf(address);
-          let amount = balance.div(2);
-          return pool.connect(account).withdraw(amount);
-        })
-      );
+        let earned = await Promise.all(
+          addresses.map(async (address) => {
+            return pool.earned(address);
+          })
+        );
 
-      await miningBlock();
+        const rewardBalancesBefore = await Promise.all(
+          addresses.map(async (address) => {
+            return rewardToken.balanceOf(address);
+          })
+        );
 
-      const receipts = await Promise.all(txs.map((tx) => tx.wait()));
-    });
+        // Increase timestamp of 1s
+        await increaseTime(1);
+        earned = earned.map((v) => v.add(rewardRate.div(accounts.length)));
 
-    it("should be able to get reward", async function () {
-      const { lp, pool } = lpsAndPools[0];
-      const amount = utils.parseEther("10");
+        const txs = await Promise.all(
+          accounts.map(async (account) => {
+            return pool.connect(account).getReward();
+          })
+        );
+        await miningBlock();
+        await Promise.all(txs.map((tx) => tx.wait()));
 
-      await increaseTime(3600);
-      await miningBlock();
+        const rewardBalancesAfter = await Promise.all(
+          addresses.map(async (address) => {
+            return rewardToken.balanceOf(address);
+          })
+        );
 
-      let earned = await Promise.all(
-        addresses.map(async (address) => {
-          return pool.earned(address);
-        })
-      );
+        const rewards = rewardBalancesAfter.map((v, i) =>
+          v.sub(rewardBalancesBefore[i])
+        );
 
-      const rewardBalancesBefore = await Promise.all(
-        addresses.map(async (address) => {
-          return rewardToken.balanceOf(address);
-        })
-      );
+        // console.log(earned.map((v) => v.toString()));
+        // console.log(rewards.map((v) => v.toString()));
 
-      // Increase timestamp of 1s
-      await increaseTime(1);
-      earned = earned.map((v) => v.add(rewardRate.div(accounts.length)));
-
-      const txs = await Promise.all(
-        accounts.map(async (account) => {
-          return pool.connect(account).getReward();
-        })
-      );
-      await miningBlock();
-      await Promise.all(txs.map((tx) => tx.wait()));
-
-      const rewardBalancesAfter = await Promise.all(
-        addresses.map(async (address) => {
-          return rewardToken.balanceOf(address);
-        })
-      );
-
-      const rewards = rewardBalancesAfter.map((v, i) =>
-        v.sub(rewardBalancesBefore[i])
-      );
-
-      // console.log(earned.map((v) => v.toString()));
-      // console.log(rewards.map((v) => v.toString()));
-
-      expect(rewards).to.deep.equal(earned);
+        expect(rewards).to.deep.equal(earned);
+      });
     });
   });
 });
