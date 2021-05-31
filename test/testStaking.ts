@@ -6,6 +6,24 @@ const { createFixtureLoader, provider } = waffle;
 // Use ethers provider instead of waffle's default MockProvider
 const loadFixture = createFixtureLoader([], provider);
 
+async function miningBlock() {
+  await network.provider.send("evm_mine");
+}
+
+async function increaseTime(time: number) {
+  await network.provider.request({
+    method: "evm_increaseTime",
+    params: [time],
+  });
+}
+
+async function getCurrentTimestamp() {
+  const blockNumber = await provider.getBlockNumber();
+  const block = await provider.getBlock(blockNumber);
+
+  return block.timestamp;
+}
+
 async function deployERC20(
   name: string,
   symbol: string,
@@ -49,7 +67,7 @@ async function deployStakingPool(
 
   const pool = await (
     await ethers.getContractFactory("StakingPool")
-  ).deploy(lp.address, rewardToken.address);
+  ).deploy(lp.address, rewardToken.address, await getCurrentTimestamp());
   await pool.deployed();
 
   return { lp, pool };
@@ -63,7 +81,8 @@ async function newStakingPool(index: number, rewardDistributor: Contract) {
 
   const tx = await rewardDistributor.newStakingPoolAndSetRewardRate(
     lp.address,
-    0
+    0,
+    (await getCurrentTimestamp()) + 3600
   );
 
   const receipt = await tx.wait();
@@ -117,6 +136,7 @@ describe("Stakinng V2", function () {
   let lpsAndPools: { lp: Contract; pool: Contract }[];
   let lps: Contract[];
   let pools: Contract[];
+  let startTime: number;
 
   const rewardRate = utils.parseEther("10000");
 
@@ -200,25 +220,7 @@ describe("Stakinng V2", function () {
   });
 
   describe("Staking Pool", function () {
-    let lastUpdateTime: number;
-
-    async function miningBlock() {
-      await network.provider.send("evm_mine");
-    }
-
-    async function increaseTime(time: number) {
-      await network.provider.request({
-        method: "evm_increaseTime",
-        params: [time],
-      });
-    }
-
-    async function getCurrentTimestamp() {
-      const blockNumber = await provider.getBlockNumber();
-      const block = await provider.getBlock(blockNumber);
-
-      return block.timestamp;
-    }
+    let stakeTime, startTime: number;
 
     before(async function () {
       // Approve all lp token for all accounts
@@ -238,7 +240,7 @@ describe("Stakinng V2", function () {
       await network.provider.send("evm_setAutomine", [true]);
     });
 
-    it("should be able to stake", async function () {
+    it("should be able to stake before start time", async function () {
       const { lp, pool } = lpsAndPools[0];
       let amount = utils.parseEther("10");
 
@@ -251,18 +253,40 @@ describe("Stakinng V2", function () {
       const receipts = await Promise.all(txs.map((tx) => tx.wait()));
 
       // Assuming all txs are in the same block
-      lastUpdateTime = await getCurrentTimestamp();
+      stakeTime = await getCurrentTimestamp();
+      startTime = await pool.startTime();
+
+      expect(stakeTime).lt(startTime);
     });
 
-    it("check accounts earned", async function () {
+    it("check accounts earned before start time should all be 0", async function () {
+      const { lp, pool } = lpsAndPools[0];
+
+      await increaseTime(1000);
+      await miningBlock();
+
+      const currentTime = await getCurrentTimestamp();
+      expect(currentTime).lt(startTime);
+
+      const earned = await Promise.all(
+        addresses.map(async (address) => await pool.earned(address))
+      );
+
+      // console.log(earned.map((v) => v.toString()));
+
+      // total reward of all accounts should be 0
+      expect(earned.reduce((a, v) => a.add(v))).to.equal(0);
+    });
+
+    it("check accounts earned after start time", async function () {
       const { lp, pool } = lpsAndPools[0];
 
       await increaseTime(3600);
       await miningBlock();
 
       const rewardRate = await pool.rewardRate();
-      const timeElapsed = (await getCurrentTimestamp()) - lastUpdateTime;
-      const totalReward = rewardRate.mul(timeElapsed);
+      const timeStaked = (await getCurrentTimestamp()) - startTime;
+      const totalReward = rewardRate.mul(timeStaked);
 
       const earned = await Promise.all(
         addresses.map(async (address) => await pool.earned(address))

@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
+import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
@@ -14,6 +15,7 @@ contract StakingPool is Ownable, LPTokenWrapper {
   IERC20 public rewardToken;
 
   uint256 public rewardRate = 0;
+  uint256 public startTime;
   uint256 public lastUpdateTime;
   uint256 public rewardPerTokenStored;
 
@@ -25,10 +27,15 @@ contract StakingPool is Ownable, LPTokenWrapper {
   event Withdrawn(address indexed user, uint256 amount);
   event RewardPaid(address indexed user, uint256 reward);
 
-  constructor(address _lp, address _rewardToken) public {
+  constructor(
+    address _lp,
+    address _rewardToken,
+    uint256 _startTime
+  ) public {
     __Ownable_init();
     uni_lp = IERC20(_lp);
     rewardToken = IERC20(_rewardToken);
+    startTime = _startTime;
   }
 
   modifier updateReward(address _account) {
@@ -42,12 +49,15 @@ contract StakingPool is Ownable, LPTokenWrapper {
   }
 
   function rewardPerToken() public view returns (uint256) {
-    if (totalSupply() == 0) {
+    uint256 lastTimeApplicable = Math.max(startTime, lastUpdateTime);
+
+    if (totalSupply() == 0 || block.timestamp < lastTimeApplicable) {
       return rewardPerTokenStored;
     }
+
     return
       rewardPerTokenStored.add(
-        block.timestamp.sub(lastUpdateTime).mul(rewardRate).mul(1e18).div(
+        block.timestamp.sub(lastTimeApplicable).mul(rewardRate).mul(1e18).div(
           totalSupply()
         )
       );
