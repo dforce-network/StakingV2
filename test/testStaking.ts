@@ -142,8 +142,6 @@ describe("Stakinng V2", function () {
       const amount = utils.parseEther("200");
       await rewardToken.mint(poolAddress, amount);
 
-      // console.log("111", (await rewardToken.balanceOf(poolAddress)).toString());
-
       await expect(() =>
         rewardDistributor.rescueStakingPoolTokens(
           poolAddress,
@@ -154,6 +152,10 @@ describe("Stakinng V2", function () {
       ).to.changeTokenBalance(rewardToken, accounts[1], amount);
 
       await rewardToken.connect(accounts[1]).transfer(poolAddress, amount);
+
+      await expect(
+        pools[0].rescueTokens(rewardToken.address, amount, addresses[1])
+      ).to.be.revertedWith("onlyOwner: caller is not the owner");
     });
   });
 
@@ -412,6 +414,23 @@ describe("Stakinng V2", function () {
         // console.log(utils.formatEther(rewardDistributed));
         // console.log(utils.formatEther(rewardClaimed));
         // console.log(utils.formatEther(rewardRemaining));
+      });
+
+      it("should be able to exit", async function () {
+        const { lp, pool } = lpsAndPools[0];
+
+        const txs = await Promise.all(
+          accounts.map(async (account) => {
+            const address = await account.getAddress();
+            let balance = await pool.balanceOf(address);
+            let amount = balance.div(2);
+            return pool.connect(account).exit();
+          })
+        );
+
+        await miningBlock();
+
+        await Promise.all(txs.map((tx) => tx.wait()));
       });
     });
   });

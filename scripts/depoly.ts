@@ -1,33 +1,72 @@
-import { run, ethers } from "hardhat";
+import { Contract } from "@ethersproject/contracts";
+import { writeFileSync, readFileSync, existsSync } from "fs";
+import { run, ethers, network } from "hardhat";
 const {
   getCurrentTimestamp,
   deployERC20,
   deployRewardDistributor,
   deployStakingPools,
+  newStakingPool,
 } = require("../test/utils");
+
+const reset = false;
 
 async function main() {
   await run("compile");
 
-  const localStartTime = "01/06/2021 19:30:00";
-  console.log("Setting Start Time to\t\t:", localStartTime, "\n");
+  const localStartTime = "06/01/2021 10:30:00";
   const startTime = Date.parse(localStartTime) / 1000;
 
-  const rewardToken = await deployERC20("DF", "DF");
-  console.log("DF Address\t\t\t:", rewardToken.address);
+  const deploymentFile = network.name + ".json";
 
-  const rewardDistributor = await deployRewardDistributor(rewardToken);
-  console.log("RewardDistributor Address\t:", rewardDistributor.address);
+  let deployment: any = {};
+  let rewardToken, rewardDistributor: Contract;
 
-  const [{ lp, pool }] = await await deployStakingPools(
-    rewardToken,
-    rewardDistributor,
-    startTime,
-    1
-  );
+  if (existsSync(deploymentFile) && !reset && network.name !== "hardhat") {
+    deployment = JSON.parse(String(readFileSync(deploymentFile)));
 
-  console.log("LP address\t\t\t:", lp.address);
-  console.log("Staking Pool address\t\t:", pool.address);
+    rewardToken = (await ethers.getContractFactory("Token")).attach(
+      deployment.DF
+    );
+    rewardDistributor = (
+      await ethers.getContractFactory("RewardDistributor")
+    ).attach(deployment.RewardDistributor);
+
+    // Append 1 pool
+    const { lp, pool } = await newStakingPool(
+      deployment.Pools.length,
+      rewardDistributor,
+      startTime
+    );
+    deployment["Pools"].push({ lp: lp.address, pool: pool.address });
+  } else {
+    const rewardToken = await deployERC20("DF", "DF");
+    deployment["DF"] = rewardToken.address;
+
+    const rewardDistributor = await deployRewardDistributor(rewardToken);
+    deployment["RewardDistributor"] = rewardDistributor.address;
+
+    // Only deploy 1 pool by default
+    let pools = [];
+    const [{ lp, pool }] = await deployStakingPools(
+      rewardToken,
+      rewardDistributor,
+      startTime,
+      1
+    );
+    pools.push({ lp: lp.address, pool: pool.address });
+    deployment["Pools"] = pools;
+  }
+
+  writeFileSync(deploymentFile, JSON.stringify(deployment, null, 2));
+
+  console.log("Setting Start Time to\t\t:", localStartTime, "\n");
+  console.log("DF Address\t\t\t:", deployment.DF);
+  console.log("RewardDistributor Address\t:", deployment.RewardDistributor);
+  deployment.Pools.forEach((element: any, index: number) => {
+    console.log(`LP${index} address\t\t\t:`, element.lp);
+    console.log(`Staking Pool ${index} address\t\t:`, element.pool);
+  });
 }
 
 main()
