@@ -136,6 +136,25 @@ describe("Stakinng V2", function () {
 
       expect(allRecipients).to.eql(poolAddresses);
     });
+
+    it("should be able to rescue tokens", async function () {
+      const poolAddress = pools[0].address;
+      const amount = utils.parseEther("200");
+      await rewardToken.mint(poolAddress, amount);
+
+      // console.log("111", (await rewardToken.balanceOf(poolAddress)).toString());
+
+      await expect(() =>
+        rewardDistributor.rescueStakingPoolTokens(
+          poolAddress,
+          rewardToken.address,
+          amount,
+          addresses[1]
+        )
+      ).to.changeTokenBalance(rewardToken, accounts[1], amount);
+
+      await rewardToken.connect(accounts[1]).transfer(poolAddress, amount);
+    });
   });
 
   describe("Staking Pool", function () {

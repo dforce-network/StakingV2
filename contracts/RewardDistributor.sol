@@ -11,6 +11,12 @@ import "./StakingPool.sol";
 
 interface IRewardRecipient {
   function setRewardRate(uint256 rewardRate) external;
+
+  function rescueTokens(
+    IERC20 _token,
+    uint256 _amount,
+    address _to
+  ) external;
 }
 
 contract RewardDistributor is Initializable, Ownable {
@@ -75,7 +81,8 @@ contract RewardDistributor is Initializable, Ownable {
 
   /**
    * @param _lpToken The address of LP token to stake in the new staking pool.
-   * @param _rewardRate The reward amount to distribute per block.
+   * @param _rewardRate The reward amount to distribute per second.
+   * @param _startTime The start time of distribution.
    */
   function newStakingPoolAndSetRewardRate(
     address _lpToken,
@@ -87,6 +94,21 @@ contract RewardDistributor is Initializable, Ownable {
     );
     addRecipient(_newStakingPool);
     setRecipientRewardRate(_newStakingPool, _rewardRate);
+  }
+
+  /**
+   * @param _stakingPool The address staking pool to rescue token from.
+   * @param _token The address of token to rescue.
+   * @param _amount The amount of token to rescue.
+   * @param _to The recipient of rescued token.
+   */
+  function rescueStakingPoolTokens(
+    address _stakingPool,
+    address _token,
+    uint256 _amount,
+    address _to
+  ) external onlyOwner() {
+    IRewardRecipient(_stakingPool).rescueTokens(IERC20(_token), _amount, _to);
   }
 
   /**

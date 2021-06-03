@@ -145,8 +145,6 @@ contract StakingPool is Ownable, LPTokenWrapper {
   ) external onlyOwner {
     // cant take staked asset
     require(_token != uni_lp, "uni_lp");
-    // cant take reward asset
-    require(_token != rewardToken, "rewardToken");
 
     // transfer _to
     _token.transfer(_to, _amount);
