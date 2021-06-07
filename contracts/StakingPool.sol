@@ -147,6 +147,6 @@ contract StakingPool is Ownable, LPTokenWrapper {
     require(_token != uni_lp, "uni_lp");
 
     // transfer _to
-    _token.transfer(_to, _amount);
+    _token.safeTransfer(_to, _amount);
   }
 }
