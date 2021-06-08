@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/SafeERC20Upgradeable.sol
 import "@openzeppelin/contracts-upgradeable/utils/EnumerableSetUpgradeable.sol";
 
 import "./Ownable.sol";
-import "./StakingPool.sol";
+import "./StakingPoolWithExternalIncentivizer.sol";
 
 interface IRewardRecipient {
   function setRewardRate(uint256 rewardRate) external;
@@ -91,6 +91,29 @@ contract RewardDistributor is Initializable, Ownable {
   ) external onlyOwner returns (address _newStakingPool) {
     _newStakingPool = address(
       new StakingPool(_lpToken, address(rewardToken), _startTime)
+    );
+    addRecipient(_newStakingPool);
+    setRecipientRewardRate(_newStakingPool, _rewardRate);
+  }
+
+  /**
+   * @param _lpToken The address of LP token to stake in the new staking pool.
+   * @param _rewardRate The reward amount to distribute per second.
+   * @param _startTime The start time of distribution.
+   */
+  function newStakingPoolWithExternalIncentivizerAndSetRewardRate(
+    address _lpToken,
+    uint256 _rewardRate,
+    uint256 _startTime,
+    address _externalIncentivizer
+  ) external onlyOwner returns (address _newStakingPool) {
+    _newStakingPool = address(
+      new StakingPoolWithExternalIncentivizer(
+        _lpToken,
+        address(rewardToken),
+        _startTime,
+        _externalIncentivizer
+      )
     );
     addRecipient(_newStakingPool);
     setRecipientRewardRate(_newStakingPool, _rewardRate);

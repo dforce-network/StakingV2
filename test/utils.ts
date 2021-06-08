@@ -88,6 +88,38 @@ async function newStakingPool(
   return { lp, pool };
 }
 
+async function newStakingPoolWithExternalIncentivizer(
+  externalIncentivizer: Contract,
+  rewardDistributor: Contract,
+  startTime: number
+) {
+  const lp = (await ethers.getContractFactory("Token")).attach(
+    await externalIncentivizer.uni_lp()
+  );
+
+  const StakingPoolWithExternalIncentivizer = await ethers.getContractFactory(
+    "StakingPoolWithExternalIncentivizer"
+  );
+
+  const tx =
+    await rewardDistributor.newStakingPoolWithExternalIncentivizerAndSetRewardRate(
+      await externalIncentivizer.uni_lp(),
+      0,
+      startTime,
+      externalIncentivizer.address
+    );
+
+  const receipt = await tx.wait();
+  // const event = receipt.events[2];
+
+  const pool = StakingPoolWithExternalIncentivizer.attach(
+    receipt.events[2].args.recipient
+  );
+
+  await pool.approveLp();
+
+  return { lp, pool };
+}
 async function deployStakingPools(
   rewardToken: Contract,
   rewardDistributor: Contract,
@@ -112,4 +144,5 @@ export = {
   deployStakingPool,
   newStakingPool,
   deployStakingPools,
+  newStakingPoolWithExternalIncentivizer,
 };

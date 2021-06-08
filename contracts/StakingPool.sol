@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/math/Math.sol";
@@ -95,24 +95,34 @@ contract StakingPool is Ownable, LPTokenWrapper {
   }
 
   // stake visibility is public as overriding LPTokenWrapper's stake() function
-  function stake(uint256 _amount) public override updateReward(msg.sender) {
+  function stake(uint256 _amount)
+    public
+    virtual
+    override
+    updateReward(msg.sender)
+  {
     require(_amount > 0, "Cannot stake 0");
     super.stake(_amount);
     emit Staked(msg.sender, _amount);
   }
 
-  function withdraw(uint256 _amount) public override updateReward(msg.sender) {
+  function withdraw(uint256 _amount)
+    public
+    virtual
+    override
+    updateReward(msg.sender)
+  {
     require(_amount > 0, "Cannot withdraw 0");
     super.withdraw(_amount);
     emit Withdrawn(msg.sender, _amount);
   }
 
-  function exit() external {
+  function exit() external virtual {
     withdraw(balanceOf(msg.sender));
     getReward();
   }
 
-  function getReward() public updateReward(msg.sender) {
+  function getReward() public virtual updateReward(msg.sender) {
     uint256 _reward = rewards[msg.sender];
     if (_reward > 0) {
       rewards[msg.sender] = 0;
