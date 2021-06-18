@@ -59,12 +59,12 @@ describe("Stakinng V2", function () {
   let pools: Contract[];
   let startTime: number;
 
-  const rewardRate = utils.parseEther("10000");
-  const intialRewardTransfered = utils.parseEther("100000000");
+  const rewardRate = utils.parseEther("1000");
+  const intialRewardTransfered = utils.parseEther("10000000000000000000");
 
   before(async function () {
     // Only 5 accounts will stake
-    accounts = (await ethers.getSigners()).slice(0, 4);
+    accounts = (await ethers.getSigners()).slice(0, 5);
 
     ({ rewardToken, rewardDistributor, lpsAndPools } = await loadFixture(
       fixtureDefault
@@ -279,6 +279,7 @@ describe("Stakinng V2", function () {
 
         expect(stakeTime).lt(startTime);
       });
+
       it("reward distributed should be 0", async function () {
         const { lp, pool } = lpsAndPools[0];
         expect(await pool.rewardDistributed()).to.equal(0);
@@ -437,13 +438,19 @@ describe("Stakinng V2", function () {
   });
 
   describe("Staking Pool with external incentives", function () {
-    let stakeTime, startTime: number;
+    let stakeTime: number;
+    let startTime: number;
+    let externalIncentivizer: Contract;
     let rewardClaimed: number;
-    let lp, pool: Contract;
+    let lp: Contract;
+    let pool: Contract;
 
     before(async function () {
+      // pool[1] as external incentivizer
+      externalIncentivizer = pools[1];
+
       ({ lp, pool } = await newStakingPoolWithExternalIncentivizer(
-        pools[1],
+        externalIncentivizer,
         rewardDistributor,
         await getCurrentTimestamp()
       ));
@@ -455,6 +462,12 @@ describe("Stakinng V2", function () {
           .approve(pool.address, ethers.constants.MaxUint256);
       }
 
+      startTime = await pool.startTime();
+
+      // Set a different reward rate for the internal reward
+      let rewardRate = utils.parseEther("2000");
+      await rewardDistributor.setRecipientRewardRate(pool.address, rewardRate);
+
       // Stop automine to allow accounts to stake/withdraw at the same block
       await network.provider.send("evm_setAutomine", [false]);
     });
@@ -463,158 +476,151 @@ describe("Stakinng V2", function () {
       await network.provider.send("evm_setAutomine", [true]);
     });
 
-    describe("After start time", function () {
-      it("should be able to stake", async function () {
-        let amount = utils.parseEther("10");
+    it("should be able to stake", async function () {
+      let amount = utils.parseEther("10");
 
-        const txs = await Promise.all(
-          accounts.map((account) => pool.connect(account).stake(amount))
-        );
+      const txs = await Promise.all(
+        accounts.map((account) => pool.connect(account).stake(amount))
+      );
 
-        await miningBlock();
+      await miningBlock();
 
-        await Promise.all(txs.map((tx) => tx.wait()));
-      });
+      await Promise.all(txs.map((tx) => tx.wait()));
 
-      it("check accounts earned after start time", async function () {
-        await increaseTime(3600);
+      stakeTime = await getCurrentTimestamp();
+    });
 
-        // const currentTime = await getCurrentTimestamp();
-        // const rewardRate = await pool.rewardRate();
-        // const timeStaked = currentTime - startTime;
-        // const totalReward = rewardRate.mul(timeStaked);
+    it("check accounts earned after start time", async function () {
+      await increaseTime(3600);
 
-        const earned = await Promise.all(
-          addresses.map(async (address) => await pool.earned(address))
-        );
+      const currentTime = await getCurrentTimestamp();
+      const rewardRate = await pool.rewardRate();
+      const externalRewardRate = await externalIncentivizer.rewardRate();
+      const timeStaked = currentTime - stakeTime;
+      const totalReward = rewardRate.add(externalRewardRate).mul(timeStaked);
 
-        const externalEarned = await Promise.all(
-          addresses.map(async (address) => await pool.externalEarned(address))
-        );
+      const earned = await Promise.all(
+        addresses.map(async (address) => await pool.earned(address))
+      );
 
-        console.log(earned.map((v) => v.toString()));
-        console.log(externalEarned.map((v) => v.toString()));
+      const externalEarned = await Promise.all(
+        addresses.map(async (address) => await pool.externalEarned(address))
+      );
 
-        // expect(earned.reduce((a, v) => a.add(v))).to.equal(totalReward);
-        // expect(externalEarned.reduce((a, v) => a.add(v))).to.equal(0);
-      });
+      console.log(earned.map((v) => v.toString()));
+      console.log(externalEarned.map((v) => v.toString()));
 
-      it("should be able to withdraw", async function () {
-        const txs = await Promise.all(
-          accounts.map(async (account) => {
-            const address = await account.getAddress();
-            let balance = await pool.balanceOf(address);
-            let amount = balance.div(2);
-            return pool.connect(account).withdraw(amount);
-          })
-        );
+      const totalEarned = earned.concat(externalEarned);
+      expect(totalEarned.reduce((a, v) => a.add(v))).to.equal(totalReward);
+    });
 
-        await miningBlock();
+    it("should be able to withdraw", async function () {
+      const txs = await Promise.all(
+        accounts.map(async (account) => {
+          const address = await account.getAddress();
+          let balance = await pool.balanceOf(address);
+          let amount = balance.div(2);
+          return pool.connect(account).withdraw(amount);
+        })
+      );
 
-        await Promise.all(txs.map((tx) => tx.wait()));
-      });
+      await miningBlock();
 
-      it("should be able to get reward", async function () {
-        const amount = utils.parseEther("10");
+      await Promise.all(txs.map((tx) => tx.wait()));
+    });
 
-        await increaseTime(3600);
+    it("should be able to get reward", async function () {
+      await increaseTime(3600);
 
-        let earned = await Promise.all(
-          addresses.map(async (address) => {
-            return pool.earned(address);
-          })
-        );
+      let earned = await Promise.all(
+        addresses.map(async (address) => {
+          return pool.earned(address);
+        })
+      );
 
-        let externalEarned = await Promise.all(
-          addresses.map(async (address) => {
-            return pool.externalEarned(address);
-          })
-        );
+      let externalEarned = await Promise.all(
+        addresses.map(async (address) => {
+          return pool.externalEarned(address);
+        })
+      );
 
-        const rewardBalancesBefore = await Promise.all(
-          addresses.map(async (address) => {
-            return rewardToken.balanceOf(address);
-          })
-        );
+      const rewardBalancesBefore = await Promise.all(
+        addresses.map(async (address) => {
+          return rewardToken.balanceOf(address);
+        })
+      );
 
-        const time1 = await getCurrentTimestamp();
+      const time1 = await getCurrentTimestamp();
 
-        const txs = await Promise.all(
-          accounts.map(async (account) => {
-            return pool.connect(account).getReward();
-          })
-        );
-        await miningBlock();
-        await Promise.all(txs.map((tx) => tx.wait()));
+      const txs = await Promise.all(
+        accounts.map(async (account) => {
+          return pool.connect(account).getReward();
+        })
+      );
+      await miningBlock();
+      await Promise.all(txs.map((tx) => tx.wait()));
 
-        const rewardBalancesAfter = await Promise.all(
-          addresses.map(async (address) => {
-            return rewardToken.balanceOf(address);
-          })
-        );
+      const rewardBalancesAfter = await Promise.all(
+        addresses.map(async (address) => {
+          return rewardToken.balanceOf(address);
+        })
+      );
 
-        const rewards = rewardBalancesAfter.map((v, i) =>
-          v.sub(rewardBalancesBefore[i])
-        );
+      const rewards = rewardBalancesAfter.map((v, i) =>
+        v.sub(rewardBalancesBefore[i])
+      );
 
-        const time2 = await getCurrentTimestamp();
-        earned = externalEarned.map((v) =>
-          v.add(rewardRate.mul(time2 - time1).div(accounts.length))
-        );
+      const time2 = await getCurrentTimestamp();
+      earned = externalEarned.map((v) =>
+        v.add(rewardRate.mul(time2 - time1).div(accounts.length))
+      );
 
-        console.log(earned.map((v) => v.toString()));
-        console.log(rewards.map((v) => v.toString()));
+      console.log(earned.map((v) => v.toString()));
+      console.log(rewards.map((v) => v.toString()));
 
-        // expect(rewards).to.deep.equal(earned);
+      // expect(rewards).to.deep.equal(earned);
 
-        rewardClaimed = rewards.reduce((a, v) => a.add(v));
-      });
+      rewardClaimed = rewards.reduce((a, v) => a.add(v));
+    });
 
-      it("reward distributed should be correct", async function () {
-        await increaseTime(60);
+    it("reward distributed should be correct", async function () {
+      await increaseTime(60);
 
-        const newRewardRate = rewardRate.mul(2);
-        await rewardDistributor.setRecipientRewardRate(
-          pool.address,
-          newRewardRate
-        );
-        await miningBlock();
-        const time1 = await getCurrentTimestamp();
-        let rewardDistributed = rewardRate.mul(time1 - startTime);
+      const rewardRate = await pool.rewardRate();
+      let lastRateUpdateTime = await pool.lastRateUpdateTime();
 
-        expect(await pool.rewardDistributed()).to.equal(rewardDistributed);
+      const newRewardRate = rewardRate.mul(2);
+      await rewardDistributor.setRecipientRewardRate(
+        pool.address,
+        newRewardRate
+      );
+      await miningBlock();
+      const time1 = await getCurrentTimestamp();
 
-        await increaseTime(100);
-        const time2 = await getCurrentTimestamp();
+      let rewardDistributed = rewardRate.mul(time1 - lastRateUpdateTime);
 
-        rewardDistributed = rewardDistributed.add(
-          newRewardRate.mul(time2 - time1)
-        );
+      expect(await pool.rewardDistributed()).to.equal(rewardDistributed);
 
-        expect(await pool.rewardDistributed()).to.equal(rewardDistributed);
+      await increaseTime(100);
+      const time2 = await getCurrentTimestamp();
 
-        // const rewardRemaining = await rewardToken.balanceOf(
-        //   rewardDistributor.address
-        // );
+      rewardDistributed = rewardDistributed.add(
+        newRewardRate.mul(time2 - time1)
+      );
 
-        // const rewardPending = rewardDistributed.sub(rewardClaimed);
+      expect(await pool.rewardDistributed()).to.equal(rewardDistributed);
+    });
 
-        // console.log(utils.formatEther(rewardDistributed));
-        // console.log(utils.formatEther(rewardClaimed));
-        // console.log(utils.formatEther(rewardRemaining));
-      });
+    it("should be able to exit", async function () {
+      const txs = await Promise.all(
+        accounts.map(async (account) => {
+          return pool.connect(account).exit();
+        })
+      );
 
-      it("should be able to exit", async function () {
-        const txs = await Promise.all(
-          accounts.map(async (account) => {
-            return pool.connect(account).exit();
-          })
-        );
+      await miningBlock();
 
-        await miningBlock();
-
-        await Promise.all(txs.map((tx) => tx.wait()));
-      });
+      await Promise.all(txs.map((tx) => tx.wait()));
     });
   });
 });

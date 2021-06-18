@@ -110,13 +110,12 @@ async function newStakingPoolWithExternalIncentivizer(
     );
 
   const receipt = await tx.wait();
-  // const event = receipt.events[2];
+
+  // console.log(receipt.events);
 
   const pool = StakingPoolWithExternalIncentivizer.attach(
-    receipt.events[2].args.recipient
+    receipt.events[3].args.recipient
   );
-
-  await pool.approveLp();
 
   return { lp, pool };
 }

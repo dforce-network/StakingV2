@@ -14,6 +14,7 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
   using SafeERC20 for IERC20;
 
   address public externalIncentivizer;
+  IERC20 public externalRewardToken;
 
   uint256 public externalRewardStored;
   uint256 public externalRewardClaimed;
@@ -33,19 +34,14 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
     address _externalIncentivizer
   ) public StakingPool(_lp, _rewardToken, _startTime) {
     externalIncentivizer = _externalIncentivizer;
-  }
+    externalRewardToken = StakingPool(externalIncentivizer).rewardToken();
 
-  function approveLp() public {
     IERC20(uni_lp).safeApprove(externalIncentivizer, uint256(-1));
   }
 
-  function externalRewardToken() public view returns (address) {
-    return address(StakingPool(externalIncentivizer).rewardToken());
-  }
-
   modifier updateExternalReward(address _account) {
-    externalRewardStored = externalReward();
     externalRewardPerTokenStored = externalRewardPerToken();
+    externalRewardStored = externalReward();
     lastExternalUpdateTime = block.timestamp;
     if (_account != address(0)) {
       externalRewards[_account] = externalEarned(_account);
@@ -66,8 +62,13 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
       return externalRewardPerTokenStored;
     }
 
+    console.log(
+      "externalReward delta",
+      externalReward().sub(externalRewardStored)
+    );
+
     return
-      rewardPerTokenStored.add(
+      externalRewardPerTokenStored.add(
         externalReward().sub(externalRewardStored).mul(1e18).div(totalSupply())
       );
   }
@@ -113,30 +114,30 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
     console.log("finish got rewards");
   }
 
+  function getExternalReward() internal {
+    uint256 balanceBefore = externalRewardToken.balanceOf(address(this));
+
+    StakingPool(externalIncentivizer).getReward();
+
+    uint256 balanceAfter = externalRewardToken.balanceOf(address(this));
+    externalRewardClaimed = externalRewardClaimed.add(
+      balanceAfter.sub(balanceBefore)
+    );
+
+    console.log("Claimed external reward", balanceAfter.sub(balanceBefore));
+  }
+
   function getReward() public override updateExternalReward(msg.sender) {
     super.getReward();
-    console.log("finish to get reward from parent");
+
+    // Claim reward from external incentivizer
+    getExternalReward();
 
     uint256 _externalReward = externalRewards[msg.sender];
     console.log("_externalReward", _externalReward);
     if (_externalReward > 0) {
       externalRewards[msg.sender] = 0;
-
-      // Claim external reward if the remaining balance is insufficient
-      IERC20 _externalRewardToken = IERC20(externalRewardToken());
-      uint256 balanceBefore = _externalRewardToken.balanceOf(address(this));
-      console.log("balanceBefore", balanceBefore);
-      if (balanceBefore < _externalReward) {
-        StakingPool(externalIncentivizer).getReward();
-
-        uint256 balanceAfter = _externalRewardToken.balanceOf(address(this));
-        externalRewardClaimed = externalRewardClaimed.add(
-          balanceAfter.sub(balanceBefore)
-        );
-      }
-
-      _externalRewardToken.safeTransfer(msg.sender, _externalReward);
-
+      externalRewardToken.safeTransfer(msg.sender, _externalReward);
       emit ExternalRewardPaid(msg.sender, _externalReward);
     }
   }
