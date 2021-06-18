@@ -6,12 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
+import "./interfaces/IExternalIncentivizer.sol";
 import "./StakingPool.sol";
 
 contract StakingPoolWithExternalIncentivizer is StakingPool {
   using SafeERC20 for IERC20;
 
-  address public externalIncentivizer;
+  IExternalIncentivizer public externalIncentivizer;
   IERC20 public externalRewardToken;
 
   uint256 public externalRewardStored;
@@ -30,10 +31,10 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
     uint256 _startTime,
     address _externalIncentivizer
   ) public StakingPool(_lp, _rewardToken, _startTime) {
-    externalIncentivizer = _externalIncentivizer;
-    externalRewardToken = StakingPool(externalIncentivizer).rewardToken();
+    externalIncentivizer = IExternalIncentivizer(_externalIncentivizer);
+    externalRewardToken = externalIncentivizer.rewardToken();
 
-    IERC20(uni_lp).safeApprove(externalIncentivizer, uint256(-1));
+    IERC20(uni_lp).safeApprove(address(externalIncentivizer), uint256(-1));
   }
 
   modifier updateExternalReward(address _account) {
@@ -48,9 +49,7 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
 
   function externalReward() public view returns (uint256) {
     return
-      externalRewardClaimed.add(
-        StakingPool(externalIncentivizer).earned(address(this))
-      );
+      externalRewardClaimed.add(externalIncentivizer.earned(address(this)));
   }
 
   function externalRewardPerToken() public view returns (uint256) {
@@ -83,7 +82,7 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
     super.stake(_amount);
 
     // Staking to external pool
-    StakingPool(externalIncentivizer).stake(_amount);
+    externalIncentivizer.stake(_amount);
   }
 
   function withdraw(uint256 _amount)
@@ -92,7 +91,7 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
     updateExternalReward(msg.sender)
   {
     // Withdraw from external pool
-    StakingPool(externalIncentivizer).withdraw(_amount);
+    externalIncentivizer.withdraw(_amount);
 
     super.withdraw(_amount);
   }
@@ -105,7 +104,7 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
   function getExternalReward() internal {
     uint256 balanceBefore = externalRewardToken.balanceOf(address(this));
 
-    StakingPool(externalIncentivizer).getReward();
+    externalIncentivizer.getReward();
 
     uint256 balanceAfter = externalRewardToken.balanceOf(address(this));
     externalRewardClaimed = externalRewardClaimed.add(
