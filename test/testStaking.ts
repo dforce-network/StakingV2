@@ -490,7 +490,7 @@ describe("Stakinng V2", function () {
       stakeTime = await getCurrentTimestamp();
     });
 
-    it("check accounts earned after start time", async function () {
+    it("check accounts earned", async function () {
       await increaseTime(3600);
 
       const currentTime = await getCurrentTimestamp();
@@ -507,8 +507,8 @@ describe("Stakinng V2", function () {
         addresses.map(async (address) => await pool.externalEarned(address))
       );
 
-      console.log(earned.map((v) => v.toString()));
-      console.log(externalEarned.map((v) => v.toString()));
+      // console.log(earned.map((v) => v.toString()));
+      // console.log(externalEarned.map((v) => v.toString()));
 
       const totalEarned = earned.concat(externalEarned);
       expect(totalEarned.reduce((a, v) => a.add(v))).to.equal(totalReward);
@@ -524,8 +524,9 @@ describe("Stakinng V2", function () {
         })
       );
 
+      // Need to mining twice for network hardhat
       await miningBlock();
-
+      await miningBlock();
       await Promise.all(txs.map((tx) => tx.wait()));
     });
 
@@ -571,14 +572,19 @@ describe("Stakinng V2", function () {
       );
 
       const time2 = await getCurrentTimestamp();
-      earned = externalEarned.map((v) =>
-        v.add(rewardRate.mul(time2 - time1).div(accounts.length))
+      const totalRewardRate = (await pool.rewardRate()).add(
+        await externalIncentivizer.rewardRate()
+      );
+      const expected = externalEarned.map((v, index) =>
+        v
+          .add(earned[index])
+          .add(totalRewardRate.mul(time2 - time1).div(accounts.length))
       );
 
-      console.log(earned.map((v) => v.toString()));
-      console.log(rewards.map((v) => v.toString()));
+      // console.log(expected.map((v) => v.toString()));
+      // console.log(rewards.map((v) => v.toString()));
 
-      // expect(rewards).to.deep.equal(earned);
+      expect(rewards).to.deep.equal(expected);
 
       rewardClaimed = rewards.reduce((a, v) => a.add(v));
     });
@@ -597,8 +603,8 @@ describe("Stakinng V2", function () {
       await miningBlock();
       const time1 = await getCurrentTimestamp();
 
+      // startTime < lastRateUpdateTime when deploy this pool
       let rewardDistributed = rewardRate.mul(time1 - lastRateUpdateTime);
-
       expect(await pool.rewardDistributed()).to.equal(rewardDistributed);
 
       await increaseTime(100);
@@ -619,8 +625,11 @@ describe("Stakinng V2", function () {
       );
 
       await miningBlock();
-
       await Promise.all(txs.map((tx) => tx.wait()));
+
+      // All external reward should be claimed as all users have exited
+      const externalRewardRemaining = await rewardToken.balanceOf(pool.address);
+      expect(externalRewardRemaining).to.equal(0);
     });
   });
 });

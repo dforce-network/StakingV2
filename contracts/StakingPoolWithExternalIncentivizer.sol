@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "./StakingPool.sol";
 
-import "hardhat/console.sol";
-
 contract StakingPoolWithExternalIncentivizer is StakingPool {
   using SafeERC20 for IERC20;
 
@@ -19,7 +17,6 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
   uint256 public externalRewardStored;
   uint256 public externalRewardClaimed;
 
-  uint256 public lastExternalUpdateTime;
   uint256 public externalRewardPerTokenStored;
 
   mapping(address => uint256) public userExternalRewardPerTokenPaid;
@@ -42,7 +39,6 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
   modifier updateExternalReward(address _account) {
     externalRewardPerTokenStored = externalRewardPerToken();
     externalRewardStored = externalReward();
-    lastExternalUpdateTime = block.timestamp;
     if (_account != address(0)) {
       externalRewards[_account] = externalEarned(_account);
       userExternalRewardPerTokenPaid[_account] = externalRewardPerTokenStored;
@@ -61,11 +57,6 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
     if (totalSupply() == 0) {
       return externalRewardPerTokenStored;
     }
-
-    console.log(
-      "externalReward delta",
-      externalReward().sub(externalRewardStored)
-    );
 
     return
       externalRewardPerTokenStored.add(
@@ -107,11 +98,8 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
   }
 
   function exit() external override {
-    console.log("u r in the exit");
     withdraw(balanceOf(msg.sender));
-    console.log("finish withdrew");
     getReward();
-    console.log("finish got rewards");
   }
 
   function getExternalReward() internal {
@@ -123,8 +111,6 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
     externalRewardClaimed = externalRewardClaimed.add(
       balanceAfter.sub(balanceBefore)
     );
-
-    console.log("Claimed external reward", balanceAfter.sub(balanceBefore));
   }
 
   function getReward() public override updateExternalReward(msg.sender) {
@@ -134,7 +120,6 @@ contract StakingPoolWithExternalIncentivizer is StakingPool {
     getExternalReward();
 
     uint256 _externalReward = externalRewards[msg.sender];
-    console.log("_externalReward", _externalReward);
     if (_externalReward > 0) {
       externalRewards[msg.sender] = 0;
       externalRewardToken.safeTransfer(msg.sender, _externalReward);
