@@ -488,6 +488,9 @@ describe("Stakinng V2", function () {
       await Promise.all(txs.map((tx) => tx.wait()));
 
       stakeTime = await getCurrentTimestamp();
+
+      let totalStaked = await externalIncentivizer.balanceOf(pool.address);
+      expect(totalStaked).to.equal(amount.mul(accounts.length));
     });
 
     it("check accounts earned", async function () {
