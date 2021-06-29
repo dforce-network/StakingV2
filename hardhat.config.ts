@@ -35,7 +35,7 @@ export default {
       allowUnlimitedContractSize: true,
     },
     mainnet: {
-      url: `https://eth-mainnet.alchemyapi.io/${alchemyKey}`,
+      url: `https://eth-mainnet.alchemyapi.io/v2/${alchemyKey}`,
       accounts: [`0x${privateKey}`],
       gas: 8000000,
       gasPrice: 1000000000, // 1gWei
