@@ -22,13 +22,8 @@
         const rewardDistributorAddress = "0x959715da68DC2D1329F4bb34e13Da03FE10c374b";
 
         let allLPPairs = [
-            "0x366a6A947D7904248125E6425615AF13E7BD1879",   // BUSD/USX
-            "0x9344420FF7E947aF5e19B9788A1C3a3D3BC7C8De",   // USX/DF
-            "0x75243c503FF2cB375995381EE31950224A7579A1",   // ETH/xETH
-            "0xc868498BD4d928374C315F57D1A7cb9F12704d4d",   // BTCB/xBTC
-            "0xF7943D4488058980d7174B1F3Cf0b85beB189869",   // EUX/USX
-            "0xBc0Aa02e6363709D84388fC9aAbedE84f2Af1Eff",   // xTSLA/USX
-            "0xabBc34F80257B4fcb58ab6eafF9B3b70406c8C57",   // xAAPL/USX
+            // "0xBc0Aa02e6363709D84388fC9aAbedE84f2Af1Eff",   // xTSLA/USX
+            // "0xabBc34F80257B4fcb58ab6eafF9B3b70406c8C57",   // xAAPL/USX
             "0x2A41dd2c004AA2Ee42c527c1c2318F41845da2e9",   // xAMZN/USX
             "0x8Ee1932CA5618324E19545A0b8d3026B876e4188",   // xCOIN/USX
             "0x917ee7617aE1d03A836D2E4D5bb9EbE6C86ce125",   // BUSD/USX - kyber
@@ -36,7 +31,14 @@
             "0x782F8a1375c88fD30c5c49b07a63dd97591F0ff3",   // EUX/USX - kyber
         ];
 
-        let allNewRates = ['0', '0', '5787037037037038', '10416666666666667', '0', '28935185185185186', '28935185185185186', '28935185185185186', '28935185185185186', '57870370370370371', '104166666666666667', '23148148148148149']
+        let allNewRates = [
+            // '23148148148148149', 
+                        //    '23148148148148149', 
+                           '23148148148148149', 
+                           '23148148148148149', 
+                           '34722222222222223', 
+                           '81018518518518519', 
+                           '17361111111111112']
 
         if (typeof remix == "object") {
             metadata = JSON.parse(
