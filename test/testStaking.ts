@@ -161,8 +161,14 @@ describe("Stakinng V2", function () {
   });
 
   describe("Staking Pool", function () {
-    let stakeTime, startTime: number;
+    let stakeTime: number,
+      startTime: number,
+      getRewardTime: number,
+      setRateTime: number;
     let rewardClaimed: number;
+    let phase2RewardRate: BigNumber;
+    const initialRatio = [1, 2, 3, 4];
+    const secondRatio = [1, 2, 6, 8];
 
     before(async function () {
       // Approve all lp token for all accounts
@@ -188,7 +194,11 @@ describe("Stakinng V2", function () {
         let amount = utils.parseEther("10");
 
         const txs = await Promise.all(
-          accounts.map((account) => pool.connect(account).stake(amount))
+          accounts.map((account, index) => {
+            const stakingAmount = amount.mul(index + 1);
+            // console.log("Account ", index, "staking", stakingAmount.toString());
+            return pool.connect(account).stake(stakingAmount);
+          })
         );
 
         await miningBlock();
@@ -228,7 +238,7 @@ describe("Stakinng V2", function () {
         const currentTime = await getCurrentTimestamp();
         expect(currentTime).lt(startTime);
 
-        // Withdraw
+        // Withdraw 1/2 of balance
         let txs = await Promise.all(
           accounts.map(async (account) => {
             const address = await account.getAddress();
@@ -245,7 +255,6 @@ describe("Stakinng V2", function () {
           accounts.map(async (account) => {
             const address = await account.getAddress();
             let balance = await pool.balanceOf(address);
-            let amount = balance.div(2);
             return pool.connect(account).exit();
           })
         );
@@ -266,7 +275,11 @@ describe("Stakinng V2", function () {
         let amount = utils.parseEther("10");
 
         const txs = await Promise.all(
-          accounts.map((account) => pool.connect(account).stake(amount))
+          accounts.map((account, index) => {
+            const stakingAmount = amount.mul(index + 1);
+            // console.log("Account ", index, "staking", stakingAmount.toString());
+            return pool.connect(account).stake(stakingAmount);
+          })
         );
 
         await miningBlock();
@@ -317,8 +330,12 @@ describe("Stakinng V2", function () {
       it("should be able to withdraw", async function () {
         const { lp, pool } = lpsAndPools[0];
 
+        // TODO: make some accouts withdraw and some do not
+        // const withdrawAccounts = accounts.slice(0, 2);
+        const withdrawAccounts = accounts;
+
         const txs = await Promise.all(
-          accounts.map(async (account) => {
+          withdrawAccounts.map(async (account) => {
             const address = await account.getAddress();
             let balance = await pool.balanceOf(address);
             let amount = balance.div(2);
@@ -369,9 +386,20 @@ describe("Stakinng V2", function () {
           v.sub(rewardBalancesBefore[i])
         );
 
-        const time2 = await getCurrentTimestamp();
-        earned = earned.map((v) =>
-          v.add(rewardRate.mul(time2 - time1).div(accounts.length))
+        getRewardTime = await getCurrentTimestamp();
+
+        // totalShares = 1 + 2 + 3 + ... + accounts.length
+        const totalShares = initialRatio.reduce((a, v) => a + v);
+        // console.log(totalShares);
+
+        // Each earned = previousReward + totalReward / totalShares * (acountIndex + 1)
+        earned = earned.map((v, i) =>
+          v.add(
+            rewardRate
+              .mul(getRewardTime - time1)
+              .mul(initialRatio[i])
+              .div(totalShares)
+          )
         );
 
         // console.log(earned.map((v) => v.toString()));
@@ -387,22 +415,24 @@ describe("Stakinng V2", function () {
 
         await increaseTime(60);
 
-        const newRewardRate = rewardRate.mul(2);
+        phase2RewardRate = rewardRate.mul(2);
         await rewardDistributor.setRecipientRewardRate(
           pool.address,
-          newRewardRate
+          phase2RewardRate
         );
         await miningBlock();
-        const time1 = await getCurrentTimestamp();
-        let rewardDistributed = rewardRate.mul(time1 - startTime);
 
+        setRateTime = await getCurrentTimestamp();
+        expect(setRateTime).to.equal(await pool.lastRateUpdateTime());
+
+        let rewardDistributed = rewardRate.mul(setRateTime - startTime);
         expect(await pool.rewardDistributed()).to.equal(rewardDistributed);
 
         await increaseTime(100);
         const time2 = await getCurrentTimestamp();
 
         rewardDistributed = rewardDistributed.add(
-          newRewardRate.mul(time2 - time1)
+          phase2RewardRate.mul(time2 - setRateTime)
         );
 
         expect(await pool.rewardDistributed()).to.equal(rewardDistributed);
@@ -418,14 +448,57 @@ describe("Stakinng V2", function () {
         // console.log(utils.formatEther(rewardRemaining));
       });
 
+      it("check accounts total reward after set reward rate", async function () {
+        const { lp, pool } = lpsAndPools[0];
+
+        await increaseTime(100);
+
+        const txs = await Promise.all(
+          accounts.map(async (account) => {
+            return pool.connect(account).getReward();
+          })
+        );
+        await miningBlock();
+        await Promise.all(txs.map((tx) => tx.wait()));
+
+        // These should be all the reward from the very beginning
+        const rewards = await Promise.all(
+          addresses.map(async (address) => {
+            return rewardToken.balanceOf(address);
+          })
+        );
+
+        const time2 = await getCurrentTimestamp();
+
+        // totalShares = 1 + 2 + 3 + ... + accounts.length
+        const totalShares = initialRatio.reduce((a, v) => a + v);
+        // console.log(totalShares);
+
+        // Each earned = totalReward / totalShares * (acountIndex + 1)
+        const expected = accounts.map((v, i) => {
+          const phase1Reward = rewardRate
+            .mul(setRateTime - startTime)
+            .mul(initialRatio[i])
+            .div(totalShares);
+          const phase2Reward = phase2RewardRate
+            .mul(time2 - setRateTime)
+            .mul(initialRatio[i])
+            .div(totalShares);
+
+          return phase1Reward.add(phase2Reward);
+        });
+
+        // console.log(earned.map((v) => v.toString()));
+        // console.log(rewards.map((v) => v.toString()));
+
+        expect(rewards).to.deep.equal(expected);
+      });
+
       it("should be able to exit", async function () {
         const { lp, pool } = lpsAndPools[0];
 
         const txs = await Promise.all(
           accounts.map(async (account) => {
-            const address = await account.getAddress();
-            let balance = await pool.balanceOf(address);
-            let amount = balance.div(2);
             return pool.connect(account).exit();
           })
         );
