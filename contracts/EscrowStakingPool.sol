@@ -26,15 +26,12 @@ contract EscrowStakingPool is StakingPool {
     emit SetEscrowAccount(_escrowAccount);
   }
 
-  modifier expired() {
-    uint256 _freezingTime = FREEZING_TIME;
-    if (_freezingTime > 0) {
-      require(_freezingTime >= block.timestamp, "Freezing time has entered");
-    }
+  modifier freeze() {
+    require(FREEZING_TIME >= block.timestamp, "Freezing time has entered");
     _;
   }
 
-  function setRewardRate(uint256 _rewardRate) public override expired {
+  function setRewardRate(uint256 _rewardRate) public override freeze {
     StakingPool.setRewardRate(_rewardRate);
   }
 
@@ -43,11 +40,11 @@ contract EscrowStakingPool is StakingPool {
     uni_lp.safeTransfer(ESCROW_ACCOUNT, uni_lp.balanceOf(address(this)));
   }
 
-  function stake(uint256 _amount) public override expired {
+  function stake(uint256 _amount) public override freeze {
     StakingPool.stake(_amount);
   }
 
-  function withdraw(uint256 _amount) public override expired {
+  function withdraw(uint256 _amount) public override freeze {
     StakingPool.withdraw(_amount);
   }
 
