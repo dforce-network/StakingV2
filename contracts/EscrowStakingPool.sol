@@ -4,43 +4,43 @@ pragma solidity 0.6.12;
 import "./StakingPool.sol";
 
 contract EscrowStakingPool is StakingPool {
-  uint256 internal periodFinish_;
+  uint256 internal immutable FREEZING_TIME;
+  address internal immutable ESCROW_ACCOUNT;
 
-  event SetPeriodFinish(uint256 periodFinish);
+  event SetFreezingTime(uint256 freezingTime);
+  event SetEscrowAccount(address escrowAccount);
 
   constructor(
     address _lp,
     address _rewardToken,
-    uint256 _startTime
-  ) public StakingPool(_lp, _rewardToken, _startTime) {}
+    uint256 _startTime,
+    uint256 _freezingTime,
+    address _escrowAccount
+  ) public StakingPool(_lp, _rewardToken, _startTime) {
+    require(_freezingTime > block.timestamp, "Freeze time is invalid");
+    FREEZING_TIME = _freezingTime;
+    emit SetFreezingTime(_freezingTime);
 
-  modifier expired() {
-    uint256 _periodFinish = periodFinish_;
-    if (_periodFinish > 0) {
-      require(_periodFinish >= block.timestamp, "uni_lp");
-    }
-    _;
+    require(_escrowAccount != address(0), "Escrow account is invalid");
+    ESCROW_ACCOUNT = _escrowAccount;
+    emit SetEscrowAccount(_escrowAccount);
   }
 
-  function setPeriodFinish(uint256 _periodFinish)
-    external
-    onlyOwner
-    updateReward(address(0))
-  {
-    require(rewardRate == 0, "uni_lp");
-    require(_periodFinish > block.timestamp, "uni_lp");
-    periodFinish_ = _periodFinish;
-
-    emit SetPeriodFinish(_periodFinish);
+  modifier expired() {
+    uint256 _freezingTime = FREEZING_TIME;
+    if (_freezingTime > 0) {
+      require(_freezingTime >= block.timestamp, "Freezing time has entered");
+    }
+    _;
   }
 
   function setRewardRate(uint256 _rewardRate) public override expired {
     StakingPool.setRewardRate(_rewardRate);
   }
 
-  function escrowTransfer(address _receiver) external onlyOwner {
-    require(periodFinish_ < block.timestamp, "uni_lp");
-    uni_lp.safeTransfer(_receiver, uni_lp.balanceOf(address(this)));
+  function escrowTransfer() external onlyOwner {
+    require(FREEZING_TIME < block.timestamp, "Freezing time has not expired");
+    uni_lp.safeTransfer(ESCROW_ACCOUNT, uni_lp.balanceOf(address(this)));
   }
 
   function stake(uint256 _amount) public override expired {
@@ -51,7 +51,56 @@ contract EscrowStakingPool is StakingPool {
     StakingPool.withdraw(_amount);
   }
 
-  function periodFinish() external view returns (uint256) {
-    return periodFinish_;
+  function _distributionTime() internal view returns (uint256) {
+    return Math.min(block.timestamp, FREEZING_TIME);
+  }
+
+  function rewardPerToken() public view override returns (uint256) {
+    uint256 _lastTimeApplicable = Math.max(startTime, lastUpdateTime);
+    uint256 _distributionTimestamp = _distributionTime();
+
+    if (totalSupply() == 0 || _distributionTimestamp < _lastTimeApplicable) {
+      return rewardPerTokenStored;
+    }
+
+    return
+      rewardPerTokenStored.add(
+        _distributionTimestamp
+          .sub(_lastTimeApplicable)
+          .mul(rewardRate)
+          .mul(1e18)
+          .div(totalSupply())
+      );
+  }
+
+  function rewardDistributed() public view override returns (uint256) {
+    uint256 _distributionTimestamp = _distributionTime();
+    // Have not started yet
+    if (_distributionTimestamp < startTime) {
+      return rewardDistributedStored;
+    }
+
+    return
+      rewardDistributedStored.add(
+        _distributionTimestamp.sub(Math.max(startTime, lastRateUpdateTime)).mul(
+          rewardRate
+        )
+      );
+  }
+
+  function distributionRewardRate()
+    external
+    view
+    returns (uint256 _distributionRewardRate)
+  {
+    if (FREEZING_TIME >= block.timestamp) _distributionRewardRate = rewardRate;
+  }
+
+  function freezingTime() external view returns (uint256) {
+    return FREEZING_TIME;
+  }
+
+  function escrowAccount() external view returns (address) {
+    return ESCROW_ACCOUNT;
   }
 }

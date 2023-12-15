@@ -57,7 +57,7 @@ contract StakingPool is Ownable, LPTokenWrapper {
     _;
   }
 
-  function rewardPerToken() public view returns (uint256) {
+  function rewardPerToken() public view virtual returns (uint256) {
     uint256 _lastTimeApplicable = Math.max(startTime, lastUpdateTime);
 
     if (totalSupply() == 0 || block.timestamp < _lastTimeApplicable) {
@@ -72,7 +72,7 @@ contract StakingPool is Ownable, LPTokenWrapper {
       );
   }
 
-  function rewardDistributed() public view returns (uint256) {
+  function rewardDistributed() public view virtual returns (uint256) {
     // Have not started yet
     if (block.timestamp < startTime) {
       return rewardDistributedStored;
