@@ -5,7 +5,7 @@ import "./StakingPool.sol";
 
 contract EscrowStakingPool is StakingPool {
   uint256 internal immutable FREEZING_TIME;
-  address internal immutable ESCROW_ACCOUNT;
+  address payable internal immutable ESCROW_ACCOUNT;
 
   event SetFreezingTime(uint256 freezingTime);
   event SetEscrowAccount(address escrowAccount);
@@ -15,7 +15,7 @@ contract EscrowStakingPool is StakingPool {
     address _rewardToken,
     uint256 _startTime,
     uint256 _freezingTime,
-    address _escrowAccount
+    address payable _escrowAccount
   ) public StakingPool(_lp, _rewardToken, _startTime) {
     require(_freezingTime > block.timestamp, "Freeze time is invalid");
     FREEZING_TIME = _freezingTime;
