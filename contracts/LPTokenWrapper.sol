@@ -10,9 +10,9 @@ contract LPTokenWrapper {
 
   IERC20 public uni_lp;
 
-  uint256 private _totalSupply;
+  uint256 internal _totalSupply;
 
-  mapping(address => uint256) private _balances;
+  mapping(address => uint256) internal _balances;
 
   function totalSupply() public view returns (uint256) {
     return _totalSupply;
