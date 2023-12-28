@@ -73,7 +73,7 @@ abstract contract EscrowDForceLending is EscrowStakingPool {
     _rewardPerTokenStored = EscrowStakingPool.rewardPerToken();
 
     if (block.timestamp > FREEZING_TIME) {
-      uint256 _lastTimeApplicable = Math.max(startTime, lastUpdateTime);
+      uint256 _lastTimeApplicable = Math.max(FREEZING_TIME, lastUpdateTime);
       uint256 _freezeDistributionTimestamp = _freezeDistributionTime();
 
       if (
@@ -101,10 +101,22 @@ abstract contract EscrowDForceLending is EscrowStakingPool {
       _rewardDistributedStored = _rewardDistributedStored
         .add(
         _freezeDistributionTime().sub(
-          Math.min(FREEZE_DISTRIBUTION_END_TIME, lastRateUpdateTime)
+          Math.max(
+            FREEZING_TIME,
+            Math.min(FREEZE_DISTRIBUTION_END_TIME, lastRateUpdateTime)
+          )
         )
       )
         .mul(freezeRewardRate_);
+  }
+
+  function currentRewardRate() external view override returns (uint256) {
+    if (block.timestamp <= FREEZING_TIME) return rewardRate;
+
+    if (block.timestamp <= FREEZE_DISTRIBUTION_END_TIME)
+      return freezeRewardRate_;
+
+    return 0;
   }
 
   function balanceOfUnderlying(address _account) external returns (uint256) {
@@ -158,5 +170,13 @@ abstract contract EscrowDForceLending is EscrowStakingPool {
 
   function underlying() external view returns (IERC20) {
     return UNDERLYING;
+  }
+
+  function freezeDistributionEndTime() external view virtual returns (uint256) {
+    return FREEZE_DISTRIBUTION_END_TIME;
+  }
+
+  function freezeRewardRate() external view virtual returns (uint256) {
+    return freezeRewardRate_;
   }
 }

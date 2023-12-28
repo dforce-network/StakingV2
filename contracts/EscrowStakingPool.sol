@@ -79,9 +79,9 @@ contract EscrowStakingPool is StakingPool {
 
     return
       rewardDistributedStored.add(
-        _distributionTimestamp.sub(Math.max(startTime, lastRateUpdateTime)).mul(
-          rewardRate
-        )
+        _distributionTimestamp
+          .sub(Math.max(startTime, Math.min(lastRateUpdateTime, FREEZING_TIME)))
+          .mul(rewardRate)
       );
   }
 
@@ -91,7 +91,7 @@ contract EscrowStakingPool is StakingPool {
     virtual
     returns (uint256 _distributionRewardRate)
   {
-    if (FREEZING_TIME >= block.timestamp) _distributionRewardRate = rewardRate;
+    if (block.timestamp <= FREEZING_TIME) _distributionRewardRate = rewardRate;
   }
 
   function freezingTime() external view returns (uint256) {
