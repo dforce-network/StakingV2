@@ -40,11 +40,11 @@ contract EscrowStakingPool is StakingPool {
     uni_lp.safeTransfer(ESCROW_ACCOUNT, uni_lp.balanceOf(address(this)));
   }
 
-  function stake(uint256 _amount) public override freeze {
+  function stake(uint256 _amount) public virtual override freeze {
     StakingPool.stake(_amount);
   }
 
-  function withdraw(uint256 _amount) public override freeze {
+  function withdraw(uint256 _amount) public virtual override freeze {
     StakingPool.withdraw(_amount);
   }
 
@@ -52,7 +52,7 @@ contract EscrowStakingPool is StakingPool {
     return Math.min(block.timestamp, FREEZING_TIME);
   }
 
-  function rewardPerToken() public view override returns (uint256) {
+  function rewardPerToken() public view virtual override returns (uint256) {
     uint256 _lastTimeApplicable = Math.max(startTime, lastUpdateTime);
     uint256 _distributionTimestamp = _distributionTime();
 
@@ -70,7 +70,7 @@ contract EscrowStakingPool is StakingPool {
       );
   }
 
-  function rewardDistributed() public view override returns (uint256) {
+  function rewardDistributed() public view virtual override returns (uint256) {
     uint256 _distributionTimestamp = _distributionTime();
     // Have not started yet
     if (_distributionTimestamp < startTime) {
@@ -85,9 +85,10 @@ contract EscrowStakingPool is StakingPool {
       );
   }
 
-  function distributionRewardRate()
+  function currentRewardRate()
     external
     view
+    virtual
     returns (uint256 _distributionRewardRate)
   {
     if (FREEZING_TIME >= block.timestamp) _distributionRewardRate = rewardRate;

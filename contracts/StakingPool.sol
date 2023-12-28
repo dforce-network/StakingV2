@@ -117,7 +117,7 @@ contract StakingPool is Ownable, LPTokenWrapper {
     emit Withdrawn(msg.sender, _amount);
   }
 
-  function exit() external {
+  function exit() external virtual {
     withdraw(balanceOf(msg.sender));
     getReward();
   }
