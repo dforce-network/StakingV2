@@ -45,22 +45,6 @@ contract EscrowiETHStakingPool is EscrowDForceLending {
     emit Withdrawn(_sender, _amount);
   }
 
-  function redeemAndWithdraw(uint256 _amount)
-    external
-    freeze
-    updateReward(msg.sender)
-  {
-    address payable _sender = msg.sender;
-    _totalSupply = _totalSupply.sub(_amount);
-    _balances[_sender] = _balances[_sender].sub(_amount);
-
-    iETH(address(uni_lp)).redeem(address(this), _amount);
-
-    _sender.transfer(address(this).balance);
-
-    emit Withdrawn(_sender, _amount);
-  }
-
   function redeemUnderlyingAndWithdraw(uint256 _underlyingAmount)
     external
     freeze
@@ -78,5 +62,26 @@ contract EscrowiETHStakingPool is EscrowDForceLending {
     _sender.transfer(_underlyingAmount);
 
     emit Withdrawn(_sender, _amount);
+  }
+
+  function redeemAndWithdraw(uint256 _amount)
+    public
+    freeze
+    updateReward(msg.sender)
+  {
+    address payable _sender = msg.sender;
+    _totalSupply = _totalSupply.sub(_amount);
+    _balances[_sender] = _balances[_sender].sub(_amount);
+
+    iETH(address(uni_lp)).redeem(address(this), _amount);
+
+    _sender.transfer(address(this).balance);
+
+    emit Withdrawn(_sender, _amount);
+  }
+
+  function exitUnderlying() external {
+    redeemAndWithdraw(_balances[msg.sender]);
+    getReward();
   }
 }

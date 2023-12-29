@@ -56,8 +56,27 @@ contract EscrowiTokenStakingPool is EscrowDForceLending {
     emit Withdrawn(_sender, _amount);
   }
 
-  function redeemAndWithdraw(uint256 _amount)
+  function redeemUnderlyingAndWithdraw(uint256 _underlyingAmount)
     external
+    freeze
+    updateReward(msg.sender)
+  {
+    uint256 _iTokenBalance = uni_lp.balanceOf(address(this));
+
+    IiToken(address(uni_lp)).redeemUnderlying(address(this), _underlyingAmount);
+
+    address _sender = msg.sender;
+    uint256 _amount = (uni_lp.balanceOf(address(this))).sub(_iTokenBalance);
+    _totalSupply = _totalSupply.sub(_amount);
+    _balances[_sender] = _balances[_sender].sub(_amount);
+
+    UNDERLYING.safeTransfer(_sender, _underlyingAmount);
+
+    emit Withdrawn(_sender, _amount);
+  }
+
+  function redeemAndWithdraw(uint256 _amount)
+    public
     freeze
     updateReward(msg.sender)
   {
@@ -77,22 +96,8 @@ contract EscrowiTokenStakingPool is EscrowDForceLending {
     emit Withdrawn(_sender, _amount);
   }
 
-  function redeemUnderlyingAndWithdraw(uint256 _underlyingAmount)
-    external
-    freeze
-    updateReward(msg.sender)
-  {
-    uint256 _iTokenBalance = uni_lp.balanceOf(address(this));
-
-    IiToken(address(uni_lp)).redeemUnderlying(address(this), _underlyingAmount);
-
-    address _sender = msg.sender;
-    uint256 _amount = (uni_lp.balanceOf(address(this))).sub(_iTokenBalance);
-    _totalSupply = _totalSupply.sub(_amount);
-    _balances[_sender] = _balances[_sender].sub(_amount);
-
-    UNDERLYING.safeTransfer(_sender, _underlyingAmount);
-
-    emit Withdrawn(_sender, _amount);
+  function exitUnderlying() external {
+    redeemAndWithdraw(_balances[msg.sender]);
+    getReward();
   }
 }
