@@ -53,7 +53,7 @@ contract EscrowiTokenStakingPool is EscrowDForceLending {
     _totalSupply = _totalSupply.add(_amount);
     _balances[_sender] = _balances[_sender].add(_amount);
 
-    emit Withdrawn(_sender, _amount);
+    emit Staked(_sender, _amount);
   }
 
   function redeemUnderlyingAndWithdraw(uint256 _underlyingAmount)
