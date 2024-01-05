@@ -120,9 +120,10 @@ abstract contract EscrowDForceLending is EscrowStakingPool {
   }
 
   function balanceOfUnderlying(address _account) external returns (uint256) {
-    _balances[_account].mul(IiToken(address(uni_lp)).exchangeRateCurrent()).div(
-      1e18
-    );
+    return
+      _balances[_account]
+        .mul(IiToken(address(uni_lp)).exchangeRateCurrent())
+        .div(1e18);
   }
 
   function totalUnderlying() external returns (uint256) {
