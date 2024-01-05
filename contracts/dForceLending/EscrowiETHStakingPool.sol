@@ -57,7 +57,7 @@ contract EscrowiETHStakingPool is EscrowDForceLending {
     iETH(address(uni_lp)).redeemUnderlying(address(this), _underlyingAmount);
 
     address payable _sender = msg.sender;
-    uint256 _amount = (uni_lp.balanceOf(address(this))).sub(_iTokenBalance);
+    uint256 _amount = (_iTokenBalance).sub(uni_lp.balanceOf(address(this)));
     _totalSupply = _totalSupply.sub(_amount);
     _balances[_sender] = _balances[_sender].sub(_amount);
 
