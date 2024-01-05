@@ -23,6 +23,8 @@ contract EscrowiETHStakingPool is EscrowDForceLending {
     )
   {}
 
+  receive() external payable {}
+
   function escrowUnderlyingTransfer() external onlyOwner {
     require(FREEZING_TIME < block.timestamp, "Freezing time has not expired");
     iETH(address(uni_lp)).redeem(
@@ -69,13 +71,15 @@ contract EscrowiETHStakingPool is EscrowDForceLending {
     freeze
     updateReward(msg.sender)
   {
+    uint256 _underlyingBalance = address(this).balance;
+
     address payable _sender = msg.sender;
     _totalSupply = _totalSupply.sub(_amount);
     _balances[_sender] = _balances[_sender].sub(_amount);
 
     iETH(address(uni_lp)).redeem(address(this), _amount);
 
-    _sender.transfer(address(this).balance);
+    _sender.transfer(address(this).balance.sub(_underlyingBalance));
 
     emit Withdrawn(_sender, _amount);
   }
