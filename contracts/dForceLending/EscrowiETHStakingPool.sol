@@ -27,7 +27,7 @@ contract EscrowiETHStakingPool is EscrowDForceLending {
 
   function escrowUnderlyingTransfer() external onlyOwner {
     require(FREEZING_TIME < block.timestamp, "Freezing time has not expired");
-    iETH(address(uni_lp)).redeem(
+    IiETH(address(uni_lp)).redeem(
       address(this),
       uni_lp.balanceOf(address(this))
     );
@@ -37,7 +37,7 @@ contract EscrowiETHStakingPool is EscrowDForceLending {
   function mintAndStake() external payable freeze updateReward(msg.sender) {
     uint256 _iTokenBalance = uni_lp.balanceOf(address(this));
 
-    iETH(address(uni_lp)).mint{ value: msg.value }(address(this));
+    IiETH(address(uni_lp)).mint{ value: msg.value }(address(this));
 
     address payable _sender = msg.sender;
     uint256 _amount = (uni_lp.balanceOf(address(this))).sub(_iTokenBalance);
@@ -54,7 +54,7 @@ contract EscrowiETHStakingPool is EscrowDForceLending {
   {
     uint256 _iTokenBalance = uni_lp.balanceOf(address(this));
 
-    iETH(address(uni_lp)).redeemUnderlying(address(this), _underlyingAmount);
+    IiETH(address(uni_lp)).redeemUnderlying(address(this), _underlyingAmount);
 
     address payable _sender = msg.sender;
     uint256 _amount = (_iTokenBalance).sub(uni_lp.balanceOf(address(this)));
@@ -77,7 +77,7 @@ contract EscrowiETHStakingPool is EscrowDForceLending {
     _totalSupply = _totalSupply.sub(_amount);
     _balances[_sender] = _balances[_sender].sub(_amount);
 
-    iETH(address(uni_lp)).redeem(address(this), _amount);
+    IiETH(address(uni_lp)).redeem(address(this), _amount);
 
     _sender.transfer(address(this).balance.sub(_underlyingBalance));
 

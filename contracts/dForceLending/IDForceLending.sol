@@ -68,7 +68,7 @@ interface IiToken {
   function redeemUnderlying(address _from, uint256 _redeemAmount) external;
 }
 
-interface iETH {
+interface IiETH {
   function symbol() external view returns (string memory);
 
   function isSupported() external view returns (bool);
