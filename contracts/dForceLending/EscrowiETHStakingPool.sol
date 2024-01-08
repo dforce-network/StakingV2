@@ -9,7 +9,6 @@ contract EscrowiETHStakingPool is EscrowDForceLending {
     address _rewardToken,
     uint256 _startTime,
     uint256 _freezingTime,
-    uint256 _freezeDistributionDuration,
     address payable _escrowAccount
   )
     public
@@ -18,7 +17,6 @@ contract EscrowiETHStakingPool is EscrowDForceLending {
       _rewardToken,
       _startTime,
       _freezingTime,
-      _freezeDistributionDuration,
       _escrowAccount
     )
   {}
