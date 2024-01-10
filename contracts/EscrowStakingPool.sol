@@ -91,7 +91,8 @@ contract EscrowStakingPool is StakingPool {
     virtual
     returns (uint256 _distributionRewardRate)
   {
-    if (block.timestamp <= FREEZING_TIME) _distributionRewardRate = rewardRate;
+    if (block.timestamp >= startTime && block.timestamp <= FREEZING_TIME)
+      _distributionRewardRate = rewardRate;
   }
 
   function freezingTime() external view returns (uint256) {
