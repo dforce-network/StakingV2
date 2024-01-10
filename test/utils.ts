@@ -2,6 +2,10 @@ import { ethers, waffle, network } from "hardhat";
 import { Signer, Contract, BigNumber, utils } from "ethers";
 const { provider } = waffle;
 
+function randomRange(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min)) + min;
+}
+
 async function miningBlock() {
   await network.provider.send("evm_mine");
 }
@@ -103,7 +107,76 @@ async function deployStakingPools(
   return lpsAndPools;
 }
 
+async function deployEscrowDForceLending() {
+  const controller = await (
+    await ethers.getContractFactory("Controller")
+  ).deploy();
+  await controller.deployed();
+
+  const iETH = await (
+    await ethers.getContractFactory("iETH")
+  ).deploy(controller.address);
+  await iETH.deployed();
+
+  const underlyingName = "underlying Token Name";
+  const underlyingSymbol = "underlyingSymbol";
+  const underlyingToken = await deployERC20(underlyingName, underlyingSymbol);
+
+  const iToken = await (
+    await ethers.getContractFactory("iToken")
+  ).deploy(controller.address, underlyingToken.address);
+  await iToken.deployed();
+
+  const rewardName = "reward Token Name";
+  const rewardSymbol = "rewardSymbol";
+  const rewardToken = await deployERC20(rewardName, rewardSymbol);
+
+  const timestamp = await getCurrentTimestamp();
+  const startTime = timestamp + 3600;
+  const freezingTime = startTime + 3600;
+
+  const [owner, ...accounts] = await ethers.getSigners();
+
+  const escrowAccount = await owner.getAddress();
+
+  const EscrowiTokenStakingPool = await (
+    await ethers.getContractFactory("EscrowiTokenStakingPool")
+  ).deploy(
+    iToken.address,
+    rewardToken.address,
+    startTime,
+    freezingTime,
+    escrowAccount
+  );
+  await EscrowiTokenStakingPool.deployed();
+
+  const EscrowiETHStakingPool = await (
+    await ethers.getContractFactory("EscrowiETHStakingPool")
+  ).deploy(
+    iETH.address,
+    rewardToken.address,
+    startTime + 86400,
+    freezingTime + 86400,
+    escrowAccount
+  );
+  await EscrowiETHStakingPool.deployed();
+
+  return {
+    owner,
+    escrowAccount,
+    accounts,
+    controller,
+    iETH,
+    iToken,
+    underlyingToken,
+    rewardToken,
+    EscrowiTokenStakingPool,
+    EscrowiETHStakingPool,
+  };
+}
+
 export = {
+  randomRange,
   miningBlock,
   increaseTime,
   getCurrentTimestamp,
@@ -112,4 +185,5 @@ export = {
   deployStakingPool,
   newStakingPool,
   deployStakingPools,
+  deployEscrowDForceLending,
 };
