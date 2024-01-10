@@ -22,11 +22,6 @@
         "type": "uint256"
       },
       {
-        "internalType": "uint256",
-        "name": "_freezeDistributionDuration",
-        "type": "uint256"
-      },
-      {
         "internalType": "address payable",
         "name": "_escrowAccount",
         "type": "address"
@@ -34,25 +29,6 @@
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "oldFreezeRewardRate",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "newFreezeRewardRate",
-        "type": "uint256"
-      }
-    ],
-    "name": "FreezeRewardRateUpdated",
-    "type": "event"
   },
   {
     "anonymous": false,
@@ -258,7 +234,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "_distributionRewardRate",
         "type": "uint256"
       }
     ],
@@ -336,32 +312,6 @@
     "name": "exitUnderlying",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "freezeDistributionEndTime",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "freezeRewardRate",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -530,7 +480,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "_rewardDistributedStored",
+        "name": "",
         "type": "uint256"
       }
     ],
@@ -556,7 +506,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "_rewardPerTokenStored",
+        "name": "",
         "type": "uint256"
       }
     ],
@@ -619,19 +569,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_freezeRewardRate",
-        "type": "uint256"
-      }
-    ],
-    "name": "setFreezeRewardRate",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
