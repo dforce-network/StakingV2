@@ -31,6 +31,7 @@ async function start(escrowStakingPool: Contract) {
   );
   const startTime = await escrowStakingPool.startTime();
   if (startTime.gt(timestamp.add(10))) {
+    expect(await escrowStakingPool.currentRewardRate()).to.equal(ZERO);
     const time = Number(startTime.sub(timestamp.add(10)).toString());
     await increaseTime(time);
   }
@@ -348,6 +349,24 @@ describe("EscrowStakingPool", function () {
       });
     }
 
+    it("test currentRewardRate: success", async () => {
+      const timestamp = utils.parseUnits(
+        (await getCurrentTimestamp()).toString(),
+        0
+      );
+      const startTime = await EscrowiTokenStakingPool.startTime();
+      const freezingTime = await EscrowiTokenStakingPool.freezingTime();
+      if (timestamp.gte(startTime) && timestamp.lte(freezingTime)) {
+        expect(await EscrowiTokenStakingPool.currentRewardRate()).to.equal(
+          await EscrowiTokenStakingPool.rewardRate()
+        );
+      } else {
+        expect(await EscrowiTokenStakingPool.currentRewardRate()).to.equal(
+          ZERO
+        );
+      }
+    });
+
     it("test lockup: success", async () => {
       await lockup(EscrowiTokenStakingPool);
     });
@@ -592,6 +611,22 @@ describe("EscrowStakingPool", function () {
         }
       });
     }
+
+    it("test currentRewardRate: success", async () => {
+      const timestamp = utils.parseUnits(
+        (await getCurrentTimestamp()).toString(),
+        0
+      );
+      const startTime = await EscrowiETHStakingPool.startTime();
+      const freezingTime = await EscrowiETHStakingPool.freezingTime();
+      if (timestamp.gte(startTime) && timestamp.lte(freezingTime)) {
+        expect(await EscrowiETHStakingPool.currentRewardRate()).to.equal(
+          await EscrowiETHStakingPool.rewardRate()
+        );
+      } else {
+        expect(await EscrowiETHStakingPool.currentRewardRate()).to.equal(ZERO);
+      }
+    });
 
     it("test lockup: success", async () => {
       await lockup(EscrowiETHStakingPool);
