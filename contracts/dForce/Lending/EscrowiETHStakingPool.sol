@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "./EscrowDForceLending.sol";
+import "./EscrowLendingStakingPool.sol";
 
-contract EscrowiTokenStakingPool is EscrowDForceLending {
+contract EscrowiETHStakingPool is EscrowLendingStakingPool {
   constructor(
     address _lp,
     address _rewardToken,
@@ -12,41 +12,32 @@ contract EscrowiTokenStakingPool is EscrowDForceLending {
     address payable _escrowAccount
   )
     public
-    EscrowDForceLending(
+    EscrowLendingStakingPool(
       _lp,
       _rewardToken,
       _startTime,
       _freezingTime,
       _escrowAccount
     )
-  {
-    IERC20(IiToken(_lp).underlying()).safeApprove(_lp, uint256(-1));
-  }
+  {}
+
+  receive() external payable {}
 
   function escrowUnderlyingTransfer() external onlyOwner {
     require(FREEZING_TIME < block.timestamp, "Freezing time has not expired");
-    IiToken(address(uni_lp)).redeem(
+    IiETH(address(uni_lp)).redeem(
       address(this),
       uni_lp.balanceOf(address(this))
     );
-    UNDERLYING.safeTransfer(
-      ESCROW_ACCOUNT,
-      UNDERLYING.balanceOf(address(this))
-    );
+    ESCROW_ACCOUNT.transfer(address(this).balance);
   }
 
-  function mintAndStake(uint256 _underlyingAmount)
-    external
-    freeze
-    updateReward(msg.sender)
-  {
-    address _sender = msg.sender;
-    UNDERLYING.safeTransferFrom(_sender, address(this), _underlyingAmount);
-
+  function mintAndStake() external payable freeze updateReward(msg.sender) {
     uint256 _iTokenBalance = uni_lp.balanceOf(address(this));
 
-    IiToken(address(uni_lp)).mint(address(this), _underlyingAmount);
+    IiETH(address(uni_lp)).mint{ value: msg.value }(address(this));
 
+    address payable _sender = msg.sender;
     uint256 _amount = (uni_lp.balanceOf(address(this))).sub(_iTokenBalance);
     _totalSupply = _totalSupply.add(_amount);
     _balances[_sender] = _balances[_sender].add(_amount);
@@ -61,14 +52,14 @@ contract EscrowiTokenStakingPool is EscrowDForceLending {
   {
     uint256 _iTokenBalance = uni_lp.balanceOf(address(this));
 
-    IiToken(address(uni_lp)).redeemUnderlying(address(this), _underlyingAmount);
+    IiETH(address(uni_lp)).redeemUnderlying(address(this), _underlyingAmount);
 
-    address _sender = msg.sender;
+    address payable _sender = msg.sender;
     uint256 _amount = (_iTokenBalance).sub(uni_lp.balanceOf(address(this)));
     _totalSupply = _totalSupply.sub(_amount);
     _balances[_sender] = _balances[_sender].sub(_amount);
 
-    UNDERLYING.safeTransfer(_sender, _underlyingAmount);
+    _sender.transfer(_underlyingAmount);
 
     emit Withdrawn(_sender, _amount);
   }
@@ -78,18 +69,15 @@ contract EscrowiTokenStakingPool is EscrowDForceLending {
     freeze
     updateReward(msg.sender)
   {
-    uint256 _underlyingBalance = UNDERLYING.balanceOf(address(this));
+    uint256 _underlyingBalance = address(this).balance;
 
-    address _sender = msg.sender;
+    address payable _sender = msg.sender;
     _totalSupply = _totalSupply.sub(_amount);
     _balances[_sender] = _balances[_sender].sub(_amount);
 
-    IiToken(address(uni_lp)).redeem(address(this), _amount);
+    IiETH(address(uni_lp)).redeem(address(this), _amount);
 
-    UNDERLYING.safeTransfer(
-      _sender,
-      (UNDERLYING.balanceOf(address(this))).sub(_underlyingBalance)
-    );
+    _sender.transfer(address(this).balance.sub(_underlyingBalance));
 
     emit Withdrawn(_sender, _amount);
   }

@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "../EscrowStakingPool.sol";
+import "../../EscrowStakingPool.sol";
 import "./IDForceLending.sol";
 
-abstract contract EscrowDForceLending is EscrowStakingPool {
+abstract contract EscrowLendingStakingPool is EscrowStakingPool {
   IERC20 internal immutable UNDERLYING;
 
   constructor(
