@@ -60,6 +60,7 @@ contract EscrowiTokenStakingPool is EscrowLendingStakingPool {
    */
   function mintAndStake(uint256 _underlyingAmount)
     external
+    nonReentrant
     freeze
     updateReward(msg.sender)
   {
@@ -84,6 +85,7 @@ contract EscrowiTokenStakingPool is EscrowLendingStakingPool {
    */
   function redeemUnderlyingAndWithdraw(uint256 _underlyingAmount)
     external
+    nonReentrant
     freeze
     updateReward(msg.sender)
   {
@@ -108,6 +110,7 @@ contract EscrowiTokenStakingPool is EscrowLendingStakingPool {
    */
   function redeemAndWithdraw(uint256 _amount)
     public
+    nonReentrant
     freeze
     updateReward(msg.sender)
   {

@@ -57,7 +57,13 @@ contract EscrowiETHStakingPool is EscrowLendingStakingPool {
    * @dev Allows users to mint new iETH tokens by sending ETH and then stake them in the pool.
    * The function is only callable when the pool is not frozen and updates the reward for the sender.
    */
-  function mintAndStake() external payable freeze updateReward(msg.sender) {
+  function mintAndStake()
+    external
+    payable
+    nonReentrant
+    freeze
+    updateReward(msg.sender)
+  {
     uint256 _iTokenBalance = uni_lp.balanceOf(address(this));
 
     IiETH(address(uni_lp)).mint{ value: msg.value }(address(this));
@@ -77,6 +83,7 @@ contract EscrowiETHStakingPool is EscrowLendingStakingPool {
    */
   function redeemUnderlyingAndWithdraw(uint256 _underlyingAmount)
     external
+    nonReentrant
     freeze
     updateReward(msg.sender)
   {
@@ -101,6 +108,7 @@ contract EscrowiETHStakingPool is EscrowLendingStakingPool {
    */
   function redeemAndWithdraw(uint256 _amount)
     public
+    nonReentrant
     freeze
     updateReward(msg.sender)
   {

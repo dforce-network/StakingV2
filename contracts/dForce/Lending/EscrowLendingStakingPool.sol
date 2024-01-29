@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 import "../../EscrowStakingPool.sol";
 import "./IDForceLending.sol";
 
@@ -11,7 +13,10 @@ import "./IDForceLending.sol";
  * @dev This abstract contract extends the EscrowStakingPool with lending-specific functionality.
  * It inherits from EscrowStakingPool and includes additional methods for lending operations.
  */
-abstract contract EscrowLendingStakingPool is EscrowStakingPool {
+abstract contract EscrowLendingStakingPool is
+  ReentrancyGuard,
+  EscrowStakingPool
+{
   IERC20 internal immutable UNDERLYING;
 
   /**
@@ -30,6 +35,7 @@ abstract contract EscrowLendingStakingPool is EscrowStakingPool {
     address payable _escrowAccount
   )
     public
+    ReentrancyGuard()
     EscrowStakingPool(
       _lp,
       _rewardToken,
