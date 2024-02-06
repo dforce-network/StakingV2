@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 import "../StakingPool.sol";
 
 import "../interface/IERC20Pro.sol";
@@ -13,7 +15,7 @@ import "./LSR/ILSR.sol";
  * @notice This contract is used for staking iTokens in an LSR staking pool.
  * @dev Inherits from StakingPool to leverage the staking mechanisms.
  */
-contract LSRiTokenStakingPool is StakingPool {
+contract LSRiTokenStakingPool is ReentrancyGuard, StakingPool {
   ILSR internal immutable LSR; // LSR contract instance
   IERC20 internal immutable MSD; // MSD token instance
   IERC20 internal immutable MPR; // MPR token instance
@@ -33,7 +35,7 @@ contract LSRiTokenStakingPool is StakingPool {
     address _lsr,
     address _rewardToken,
     uint256 _startTime
-  ) public StakingPool(_lp, _rewardToken, _startTime) {
+  ) public ReentrancyGuard() StakingPool(_lp, _rewardToken, _startTime) {
     LSR = ILSR(_lsr);
 
     IERC20 _msd = IERC20(ILSR(_lsr).msd());
@@ -69,6 +71,7 @@ contract LSRiTokenStakingPool is StakingPool {
 
   function buyMsdAndStake(uint256 _mprAmount)
     external
+    nonReentrant
     updateReward(msg.sender)
   {
     address _sender = msg.sender;
@@ -90,6 +93,7 @@ contract LSRiTokenStakingPool is StakingPool {
 
   function redeemUnderlyingAndWithdraw(uint256 _msdAmount)
     external
+    nonReentrant
     updateReward(msg.sender)
   {
     uint256 _iTokenBalance = uni_lp.balanceOf(address(this));
@@ -106,7 +110,11 @@ contract LSRiTokenStakingPool is StakingPool {
     emit Withdrawn(_sender, _amount);
   }
 
-  function redeemAndWithdraw(uint256 _amount) public updateReward(msg.sender) {
+  function redeemAndWithdraw(uint256 _amount)
+    public
+    nonReentrant
+    updateReward(msg.sender)
+  {
     uint256 _msdBalance = MSD.balanceOf(address(this));
 
     address _sender = msg.sender;
